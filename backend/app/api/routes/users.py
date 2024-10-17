@@ -44,7 +44,7 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
     statement = select(User).offset(skip).limit(limit)
     users = session.exec(statement).all()
 
-    return UsersPublic(data=users, count=count)  # type: ignore
+    return UsersPublic(data=users, count=count)
 
 
 @router.post(
@@ -52,7 +52,7 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 )
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
-    Create new user.
+    Create new user. and do stuff
     """
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
