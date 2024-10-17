@@ -1,7 +1,7 @@
 import uuid
 
 from pydantic import EmailStr
-from sqlmodel import Field, SQLModel  #, Relationship
+from sqlmodel import Field, SQLModel  # , Relationship
 
 
 # Shared properties

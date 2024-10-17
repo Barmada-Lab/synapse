@@ -1,7 +1,7 @@
 """Add Users
 
 Revision ID: ecb7aab3e7df
-Revises: 
+Revises:
 Create Date: 2024-10-17 12:37:20.608955
 
 """
