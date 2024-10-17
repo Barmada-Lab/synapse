@@ -1,5 +1,6 @@
 import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -7,6 +8,8 @@ from sqlalchemy import engine_from_config, pool
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+if config is None or config.config_file_name is None:
+    raise Exception("No config found")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -62,6 +65,8 @@ def run_migrations_online():
 
     """
     configuration = config.get_section(config.config_ini_section)
+    if configuration is None:
+        raise Exception("No config section found")
     configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
         configuration,
