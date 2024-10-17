@@ -9,7 +9,7 @@ updates:
       prefix: ⬆
   # Python
   - package-ecosystem: pip
-    directory: /
+    directory: /backend
     schedule:
       interval: daily
     commit-message:
