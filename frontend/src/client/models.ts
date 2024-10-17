@@ -11,35 +11,8 @@ export type HTTPValidationError = {
   detail?: Array<ValidationError>
 }
 
-export type ItemCreate = {
-  title: string
-  description?: string | null
-}
-
-export type ItemPublic = {
-  title: string
-  description?: string | null
-  id: string
-  owner_id: string
-}
-
-export type ItemUpdate = {
-  title?: string | null
-  description?: string | null
-}
-
-export type ItemsPublic = {
-  data: Array<ItemPublic>
-  count: number
-}
-
 export type Message = {
   message: string
-}
-
-export type NewPassword = {
-  token: string
-  new_password: string
 }
 
 export type Token = {
