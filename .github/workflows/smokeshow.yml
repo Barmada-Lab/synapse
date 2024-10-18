@@ -4,8 +4,6 @@ on:
   workflow_run:
     workflows: [Test Backend]
     types: [completed]
-    branches:
-      - main
 
 jobs:
   smokeshow:
@@ -17,6 +15,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
