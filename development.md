@@ -1,4 +1,4 @@
-# FastAPI Project - Development
+# Synapse - Development
 
 ## Docker Compose
 
@@ -67,34 +67,6 @@ And then you can run the local development server for the backend:
 cd backend
 fastapi dev app/main.py
 ```
-
-## Docker Compose in `localhost.tiangolo.com`
-
-When you start the Docker Compose stack, it uses `localhost` by default, with different ports for each service (backend, frontend, adminer, etc).
-
-When you deploy it to production (or staging), it will deploy each service in a different subdomain, like `api.example.com` for the backend and `dashboard.example.com` for the frontend.
-
-In the guide about [deployment](deployment.md) you can read about Traefik, the configured proxy. That's the component in charge of transmitting traffic to each service based on the subdomain.
-
-If you want to test that it's all working locally, you can edit the local `.env` file, and change:
-
-```dotenv
-DOMAIN=localhost.tiangolo.com
-```
-
-That will be used by the Docker Compose files to configure the base domain for the services.
-
-Traefik will use this to transmit traffic at `api.localhost.tiangolo.com` to the backend, and traffic at `dashboard.localhost.tiangolo.com` to the frontend.
-
-The domain `localhost.tiangolo.com` is a special domain that is configured (with all its subdomains) to point to `127.0.0.1`. This way you can use that for your local development.
-
-After you update it, run again:
-
-```bash
-docker compose watch
-```
-
-When deploying, for example in production, the main Traefik is configured outside of the Docker Compose files. For local development, there's an included Traefik in `docker-compose.override.yml`, just to let you test that the domains work as expected, for example with `api.localhost.tiangolo.com` and `dashboard.localhost.tiangolo.com`.
 
 ## Docker Compose files and env vars
 
