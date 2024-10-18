@@ -1,5 +1,10 @@
 name: Smokeshow
 
+permissions:
+  actions: read
+  statuses: write
+  contents: read
+
 on:
   workflow_run:
     workflows: [Test Backend]
@@ -9,13 +14,9 @@ jobs:
   smokeshow:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      statuses: write
 
     steps:
       - uses: actions/checkout@v4
-        token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
