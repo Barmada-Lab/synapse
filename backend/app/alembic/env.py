@@ -1,6 +1,8 @@
 import os
 from logging.config import fileConfig
 from pathlib import Path
+import pkgutil
+import importlib
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -15,14 +17,32 @@ if config is None or config.config_file_name is None:
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-# target_metadata = None
-
-from app.models import SQLModel  # noqa
 from app.core.config import settings # noqa
+
+def import_all_modules(package_name: str):
+    try:
+        # Import the package itself
+        package = importlib.import_module(package_name)
+
+        # Check if the package has a __path__ attribute
+        if not hasattr(package, '__path__'):
+            raise ImportError(f"{package_name} is not a package")
+
+        package_path = package.__path__
+
+        # Iterate through all modules in the package
+        for _, module_name, is_pkg in pkgutil.walk_packages(package_path, package_name + '.'):
+            try:
+                importlib.import_module(module_name)
+                print(f"Imported module: {module_name}")
+            except ImportError as e:
+                print(f"Failed to import module {module_name}: {e}")
+
+    except ImportError as e:
+        print(f"Error importing package or modules: {e}")
+
+from sqlmodel import SQLModel
+import_all_modules('app.models') # all tables contained in modules under app.models should inherit from SQLModel, populating SQLModel.metadata as they are imported
 
 target_metadata = SQLModel.metadata
 
@@ -79,8 +99,11 @@ def run_migrations_online():
             connection=connection, target_metadata=target_metadata, compare_type=True
         )
 
-        with context.begin_transaction():
+        with context.begin_transaction() as transaction:
             context.run_migrations()
+            if 'dry-run' in context.get_x_argument():
+                print('Dry-run succeeded; now rolling back transaction...')
+                transaction.rollback()
 
 
 if context.is_offline_mode():
