@@ -1,5 +1,6 @@
 import os
 from logging.config import fileConfig
+from logging import getLogger
 from pathlib import Path
 import pkgutil
 import importlib
@@ -19,30 +20,29 @@ fileConfig(config.config_file_name)
 
 from app.core.config import settings # noqa
 
-def import_all_modules(package_name: str):
-    try:
-        # Import the package itself
-        package = importlib.import_module(package_name)
+def import_all_models(package_name: str, ignore: list[str] = []):
+    print("Discovered models:")
+    print("==============================")
+    # Import the package itself
+    package = importlib.import_module(package_name)
 
-        # Check if the package has a __path__ attribute
-        if not hasattr(package, '__path__'):
-            raise ImportError(f"{package_name} is not a package")
+    # Check if the package has a __path__ attribute
+    if not hasattr(package, '__path__'):
+        raise ImportError(f"{package_name} is not a package")
 
-        package_path = package.__path__
+    package_path = package.__path__
 
-        # Iterate through all modules in the package
-        for _, module_name, is_pkg in pkgutil.walk_packages(package_path, package_name + '.'):
-            try:
-                importlib.import_module(module_name)
-                print(f"Imported module: {module_name}")
-            except ImportError as e:
-                print(f"Failed to import module {module_name}: {e}")
-
-    except ImportError as e:
-        print(f"Error importing package or modules: {e}")
+    # Iterate through all modules in the package
+    for _, module_name, is_pkg in pkgutil.walk_packages(package_path, package_name + '.'):
+        if any([module_name.startswith(i) for i in ignore]) or is_pkg:
+            continue
+        if module_name.endswith('.models'):
+            importlib.import_module(module_name)
+            print(f"{module_name}")
+    print("==============================")
 
 from sqlmodel import SQLModel
-import_all_modules('app.models') # all tables contained in modules under app.models should inherit from SQLModel, populating SQLModel.metadata as they are imported
+import_all_models('app') # all tables contained in modules under app.models should inherit from SQLModel, populating SQLModel.metadata as they are imported
 
 target_metadata = SQLModel.metadata
 

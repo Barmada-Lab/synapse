@@ -10,7 +10,7 @@ import {
   InputGroup,
   InputRightElement,
   Link,
-  Text,
+  // Text,
   useBoolean,
 } from "@chakra-ui/react"
 import {
@@ -132,12 +132,12 @@ function Login() {
         <Button variant="primary" type="submit" isLoading={isSubmitting}>
           Log In
         </Button>
-        <Text>
+        {/* <Text>
           Don't have an account?{" "}
           <Link as={RouterLink} to="/signup" color="blue.500">
             Sign up
           </Link>
-        </Text>
+        </Text> */}
       </Container>
     </>
   )
