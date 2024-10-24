@@ -25,7 +25,7 @@ def upgrade():
     sa.Column('plate_type', sa.Enum('REVVITY_PHENOPLATE_96', name='wellplatetype'), nullable=False),
     sa.Column('location', sa.Enum('CQ1', 'KX2', 'CYTOMAT2', name='location'), nullable=True),
     sa.Column('record_created', sa.DateTime(), nullable=False),
-    sa.Column('last_location_update', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('last_update', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_wellplate_name'), 'wellplate', ['name'], unique=True)
