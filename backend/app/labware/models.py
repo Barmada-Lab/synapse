@@ -20,8 +20,17 @@ class Location(enum.Enum):
 ############################################
 
 
+# base
+class WellplateRecord(SQLModel):
+    name: str
+    plate_type: WellPlateType
+    location: Location | None
+    record_created: datetime
+    last_location_update: datetime
+
+
 # table
-class WellPlate(SQLModel, table=True):
+class Wellplate(WellplateRecord, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     plate_type: WellPlateType = Field(
@@ -42,24 +51,15 @@ class WellPlate(SQLModel, table=True):
 
 
 # requests
-class WellPlateCreate(SQLModel):
+class WellplateCreate(SQLModel):
     name: str
     plate_type: WellPlateType
 
 
-class WellPlateUpdate(SQLModel):
+class WellplateUpdate(SQLModel):
     location: Location | None
 
 
-# responses
-class WellPlatePublic(SQLModel):
-    name: str
-    plate_type: WellPlateType
-    location: Location | None
-    record_created: datetime
-    last_location_update: datetime
-
-
-class WellPlateList(SQLModel):
-    data: list[WellPlatePublic]
+class WellplateList(SQLModel):
+    data: list[WellplateRecord]
     count: int

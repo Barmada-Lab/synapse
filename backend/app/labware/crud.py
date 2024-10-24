@@ -1,12 +1,12 @@
 from sqlmodel import Session, select
 
-from .models import WellPlate, WellPlateCreate, WellPlateUpdate
+from .models import Wellplate, WellplateCreate, WellplateUpdate
 
 
 def create_wellplate(
-    *, session: Session, well_plate_create: WellPlateCreate
-) -> WellPlate:
-    db_obj = WellPlate.model_validate(well_plate_create)
+    *, session: Session, wellplate_create: WellplateCreate
+) -> Wellplate:
+    db_obj = Wellplate.model_validate(wellplate_create)
     session.add(db_obj)
     session.commit()
     session.refresh(db_obj)
@@ -14,17 +14,17 @@ def create_wellplate(
 
 
 def update_wellplate(
-    *, session: Session, db_well_plate: WellPlate, well_plate_in: WellPlateUpdate
-) -> WellPlate:
-    well_plate_data = well_plate_in.model_dump(exclude_unset=True)
-    db_well_plate.sqlmodel_update(well_plate_data)
-    session.add(db_well_plate)
+    *, session: Session, db_wellplate: Wellplate, wellplate_in: WellplateUpdate
+) -> Wellplate:
+    well_plate_data = wellplate_in.model_dump(exclude_unset=True)
+    db_wellplate.sqlmodel_update(well_plate_data)
+    session.add(db_wellplate)
     session.commit()
-    session.refresh(db_well_plate)
-    return db_well_plate
+    session.refresh(db_wellplate)
+    return db_wellplate
 
 
-def get_wellplate_by_name(*, session: Session, name: str) -> WellPlate | None:
-    statement = select(WellPlate).where(WellPlate.name == name)
+def get_wellplate_by_name(*, session: Session, name: str) -> Wellplate | None:
+    statement = select(Wellplate).where(Wellplate.name == name)
     session_well_plate = session.exec(statement).first()
     return session_well_plate
