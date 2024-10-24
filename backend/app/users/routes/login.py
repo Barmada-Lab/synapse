@@ -8,7 +8,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core import security
 from app.core.config import settings
-from app.users.deps import CurrentUser, SessionDep  # , get_current_active_superuser
+from app.users.deps import (
+    CurrentActiveUser,
+    SessionDep,
+)
 
 from .. import crud
 from ..models import Token, UserPublic  # , Message, NewPassword
@@ -47,7 +50,7 @@ def login_access_token(
 
 
 @router.post("/login/test-token", response_model=UserPublic)
-def test_token(current_user: CurrentUser) -> Any:
+def test_token(current_user: CurrentActiveUser) -> Any:
     """
     Test access token
     """

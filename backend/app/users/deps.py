@@ -18,7 +18,7 @@ reusable_oauth2 = OAuth2PasswordBearer(
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 
-def get_current_user(session: SessionDep, token: TokenDep) -> User:
+def get_current_active_user(session: SessionDep, token: TokenDep) -> User:
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
@@ -37,12 +37,17 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
     return user
 
 
-CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentActiveUserDep = Depends(get_current_active_user)
+CurrentActiveUser = Annotated[User, CurrentActiveUserDep]
 
 
-def get_current_active_superuser(current_user: CurrentUser) -> User:
+def get_current_active_superuser(current_user: CurrentActiveUser) -> User:
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+CurrentActiveSuperuserDep = Depends(get_current_active_superuser)
+CurrentActiveSuperuser = Annotated[User, CurrentActiveSuperuserDep]

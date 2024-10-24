@@ -26,7 +26,7 @@ class WellplateRecord(SQLModel):
     plate_type: WellPlateType
     location: Location | None
     record_created: datetime
-    last_location_update: datetime
+    last_update: datetime
 
 
 # table
