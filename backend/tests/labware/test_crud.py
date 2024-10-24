@@ -1,14 +1,14 @@
 from sqlmodel import Session
 
 from app.labware import crud
-from app.labware.models import Location, WellplateCreate, WellPlateType, WellplateUpdate
+from app.labware.models import Location, WellplateCreate, WellplateType, WellplateUpdate
 from tests.utils import random_lower_string
 
 
 def test_create_wellplate(db: Session) -> None:
     name = random_lower_string()
     well_plate_in = WellplateCreate(
-        name=name, plate_type=WellPlateType.REVVITY_PHENOPLATE_96
+        name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
     well_plate = crud.create_wellplate(session=db, wellplate_create=well_plate_in)
     assert well_plate.name == well_plate_in.name
@@ -18,7 +18,7 @@ def test_create_wellplate(db: Session) -> None:
 def test_update_wellplate_updates_last_updated(db: Session) -> None:
     name = random_lower_string()
     well_plate_in = WellplateCreate(
-        name=name, plate_type=WellPlateType.REVVITY_PHENOPLATE_96
+        name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
     well_plate = crud.create_wellplate(session=db, wellplate_create=well_plate_in)
 
@@ -38,7 +38,7 @@ def test_update_wellplate_with_same_values_doesnt_change_last_updated(
 
     # is None, update to None
     well_plate_in = WellplateCreate(
-        name=name, plate_type=WellPlateType.REVVITY_PHENOPLATE_96
+        name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
     well_plate = crud.create_wellplate(session=db, wellplate_create=well_plate_in)
 
@@ -70,7 +70,7 @@ def test_update_wellplate_with_same_values_doesnt_change_last_updated(
 def test_get_wellplate_by_name(db: Session) -> None:
     name = random_lower_string()
     well_plate_in = WellplateCreate(
-        name=name, plate_type=WellPlateType.REVVITY_PHENOPLATE_96
+        name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
     well_plate = crud.create_wellplate(session=db, wellplate_create=well_plate_in)
 

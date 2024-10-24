@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlmodel import Column, Enum, Field, SQLModel
 
 
-class WellPlateType(enum.Enum):
+class WellplateType(enum.Enum):
     REVVITY_PHENOPLATE_96 = auto()
 
 
@@ -23,7 +23,7 @@ class Location(enum.Enum):
 # base
 class WellplateRecord(SQLModel):
     name: str
-    plate_type: WellPlateType
+    plate_type: WellplateType
     location: Location | None
     record_created: datetime
     last_update: datetime
@@ -33,8 +33,8 @@ class WellplateRecord(SQLModel):
 class Wellplate(WellplateRecord, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
-    plate_type: WellPlateType = Field(
-        sa_column=Column(Enum(WellPlateType), nullable=False)
+    plate_type: WellplateType = Field(
+        sa_column=Column(Enum(WellplateType), nullable=False)
     )
     location: Location | None = Field(
         default=None, sa_column=Column(Enum(Location), nullable=True)
@@ -53,7 +53,7 @@ class Wellplate(WellplateRecord, table=True):
 # requests
 class WellplateCreate(SQLModel):
     name: str
-    plate_type: WellPlateType
+    plate_type: WellplateType
 
 
 class WellplateUpdate(SQLModel):
