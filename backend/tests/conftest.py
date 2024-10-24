@@ -2,12 +2,11 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, delete
+from sqlmodel import Session, SQLModel, delete
 
 from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
-from app.users.models import User
 from tests.users.utils import authentication_token_from_email
 from tests.utils import get_superuser_token_headers
 
@@ -17,8 +16,11 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
-        statement = delete(User)
-        session.execute(statement)
+        meta = SQLModel.metadata
+        for table in meta.sorted_tables:
+            statement = delete(table)
+            session.execute(statement)
+        init_db(session)
         session.commit()
 
 
