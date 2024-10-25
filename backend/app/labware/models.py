@@ -3,7 +3,8 @@ from datetime import datetime
 from enum import auto
 
 import sqlalchemy as sa
-from sqlmodel import Column, Enum, Field, SQLModel
+from sqlalchemy.dialects.postgresql import ENUM
+from sqlmodel import Column, Field, SQLModel
 
 
 class WellplateType(enum.Enum):
@@ -11,9 +12,10 @@ class WellplateType(enum.Enum):
 
 
 class Location(enum.Enum):
-    CQ1 = "CQ1"
-    KX2 = "KX2"
-    CYTOMAT2 = "CYTOMAT2"
+    CQ1 = auto()
+    KX2 = auto()
+    CYTOMAT2 = auto()
+    HOTEL = auto()
 
 
 ### WellPlate
@@ -34,10 +36,10 @@ class Wellplate(WellplateRecord, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     plate_type: WellplateType = Field(
-        sa_column=Column(Enum(WellplateType), nullable=False)
+        sa_column=Column(ENUM(WellplateType), nullable=False)
     )
     location: Location | None = Field(
-        default=None, sa_column=Column(Enum(Location), nullable=True)
+        default=None, sa_column=Column(ENUM(Location), nullable=True)
     )
 
     record_created: datetime = Field(default_factory=datetime.now)
