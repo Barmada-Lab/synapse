@@ -45,6 +45,22 @@ def test_create_wellplate(authenticated_client: TestClient, db: Session) -> None
     assert wellplate.plate_type == WellplateType.REVVITY_PHENOPLATE_96
 
 
+def test_create_wellplate_duplicate_fails(
+    authenticated_client: TestClient, db: Session
+) -> None:
+    name = random_lower_string()
+    plate_type = WellplateType.REVVITY_PHENOPLATE_96
+    wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
+    crud.create_wellplate(session=db, wellplate_create=wellplate_in)
+
+    response = authenticated_client.post(
+        f"{settings.API_V1_STR}/labware/",
+        json={"name": name, "plate_type": plate_type.value},
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json() == {"detail": "A wellplate with this name already exists."}
+
+
 def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None:
     name = random_lower_string()
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
@@ -67,6 +83,17 @@ def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None
     db.refresh(wellplate)
     assert wellplate.location == location
     assert wellplate.last_update > last_last_update
+
+
+def test_update_wellplate_not_found(authenticated_client: TestClient) -> None:
+    name = random_lower_string()
+    location = Location.CQ1
+    response = authenticated_client.patch(
+        f"{settings.API_V1_STR}/labware/{name}",
+        json={"location": location.value},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Wellplate not found."}
 
 
 def test_retrieve_wellplates_unauthenticated_fails(

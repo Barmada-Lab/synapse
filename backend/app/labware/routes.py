@@ -41,7 +41,7 @@ def create_wellplate(
 ) -> WellplateRecord:
     if crud.get_wellplate_by_name(session=session, name=wellplate_in.name) is not None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="A wellplate with this name already exists.",
         )
     wellplate = crud.create_wellplate(session=session, wellplate_create=wellplate_in)
@@ -57,12 +57,12 @@ def update_wellplate(
     session: SessionDep,
     wellplate_name: str,
     wellplate_in: WellplateUpdate,
-):
+) -> WellplateRecord:
     if (
         wellplate := crud.get_wellplate_by_name(session=session, name=wellplate_name)
     ) is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found."
         )
 
     wellplate = crud.update_wellplate(
