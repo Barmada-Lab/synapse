@@ -41,5 +41,5 @@ def downgrade():
     op.drop_index(op.f('ix_wellplate_name'), table_name='wellplate')
     op.drop_table('wellplate')
     # ### end Alembic commands ###
-    op.execute("DROP TYPE wellplatetype")
-    op.execute("DROP TYPE location")
+    WELLPLATE_ENUM.drop(op.get_bind())
+    LOCATION_ENUM.drop(op.get_bind())
