@@ -24,13 +24,6 @@ repos:
         args:
           - --fix
       - id: ruff-format
-  - repo: local
-    hooks:
-      - id: lint-backend
-        name: lint-backend
-        entry: bash -c "cd backend; source .venv/bin/activate && scripts/lint.sh"
-        language: system
-        pass_filenames: false
 
 ci:
   autofix_commit_msg: 🎨 [pre-commit.ci] Auto format from pre-commit.com hooks
