@@ -23,7 +23,7 @@ class Location(enum.Enum):
 
 # base
 class WellplateRecord(SQLModel):
-    name: str
+    name: str = Field(unique=True, index=True, max_length=255)
     plate_type: WellplateType
     location: Location | None
     record_created: datetime
@@ -33,7 +33,6 @@ class WellplateRecord(SQLModel):
 # table
 class Wellplate(WellplateRecord, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(unique=True, index=True)
     plate_type: WellplateType = Field(
         sa_column=Column(Enum(WellplateType), nullable=False)
     )
