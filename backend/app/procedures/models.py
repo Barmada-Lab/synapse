@@ -67,6 +67,11 @@ class AcquisitionPlanCreate(AcquisitionPlanBase):
     pass
 
 
+class AcquisitionPlanList(SQLModel):
+    data: list[AcquisitionPlanRecord]
+    count: int
+
+
 ### Plate Read
 ################################################
 
