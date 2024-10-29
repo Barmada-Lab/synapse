@@ -1,25 +1,24 @@
 import enum
 from datetime import datetime, timedelta
-from enum import auto
 
 from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 
 from app.labware.models import Location, Wellplate
 
 
-class PlateReadStatus(enum.Enum):
-    PENDING = auto()
-    SCHEDULED = auto()
-    RUNNING = auto()
-    COMPLETED = auto()
-    CANCELLED = auto()  # user-initiated stop state
-    ABORTED = auto()  # system-initiated stop state
-    RESET = auto()
+class PlateReadStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    SCHEDULED = "SCHEDULED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"  # user-initiated stop state
+    ABORTED = "ABORTED"  # system-initiated stop state
+    RESET = "RESET"
 
 
-class ImagingPriority(enum.Enum):
-    NORMAL = auto()
-    LOW = auto()
+class ImagingPriority(str, enum.Enum):
+    NORMAL = "NORMAL"
+    LOW = "LOW"
 
 
 ### Acquisition Plan

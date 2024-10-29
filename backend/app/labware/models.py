@@ -1,20 +1,19 @@
 import enum
 from datetime import datetime
-from enum import auto
 
 import sqlalchemy as sa
 from sqlmodel import Column, Enum, Field, SQLModel
 
 
-class WellplateType(enum.Enum):
-    REVVITY_PHENOPLATE_96 = auto()
+class WellplateType(str, enum.Enum):
+    REVVITY_PHENOPLATE_96 = "REVVITY_PHENOPLATE_96"
 
 
-class Location(enum.Enum):
-    CQ1 = auto()
-    KX2 = auto()
-    CYTOMAT2 = auto()
-    HOTEL = auto()
+class Location(str, enum.Enum):
+    CQ1 = "CQ1"
+    KX2 = "KX2"
+    CYTOMAT2 = "CYTOMAT2"
+    HOTEL = "HOTEL"
 
 
 ### WellPlate
