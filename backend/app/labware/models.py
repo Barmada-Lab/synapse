@@ -21,7 +21,7 @@ class Location(str, enum.Enum):
 
 
 # base
-class WellplateRecord(SQLModel):
+class WellplateBase(SQLModel):
     name: str = Field(unique=True, index=True, max_length=255)
     plate_type: WellplateType
     location: Location | None
@@ -30,7 +30,7 @@ class WellplateRecord(SQLModel):
 
 
 # table
-class Wellplate(WellplateRecord, table=True):
+class Wellplate(WellplateBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     plate_type: WellplateType = Field(
         sa_column=Column(Enum(WellplateType), nullable=False)
@@ -57,6 +57,10 @@ class WellplateCreate(SQLModel):
 
 class WellplateUpdate(SQLModel):
     location: Location | None
+
+
+class WellplateRecord(WellplateBase):
+    id: int
 
 
 class WellplateList(SQLModel):

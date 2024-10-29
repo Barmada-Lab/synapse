@@ -5,11 +5,10 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.labware import crud
 from app.labware.models import Location, WellplateCreate, WellplateRecord, WellplateType
-from tests.labware.utils import create_random_wellplate
 from tests.utils import random_lower_string
 
 
-def test_read_wellplates(authenticated_client: TestClient, db: Session) -> None:
+def test_retrieve_wellplates(authenticated_client: TestClient, db: Session) -> None:
     # create a wellplate
     name = random_lower_string()
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
@@ -23,6 +22,16 @@ def test_read_wellplates(authenticated_client: TestClient, db: Session) -> None:
     assert all_wellplates["count"] >= 1
     for item in all_wellplates["data"]:
         WellplateRecord.model_validate(item)
+
+
+def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> None:
+    name = random_lower_string()
+    response = authenticated_client.get(
+        f"{settings.API_V1_STR}/labware", params={"name": name}
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["count"] == 0
+    assert response.json()["data"] == []
 
 
 def test_create_wellplate(authenticated_client: TestClient, db: Session) -> None:
@@ -73,7 +82,7 @@ def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None
 
     location = Location.CQ1
     response = authenticated_client.patch(
-        f"{settings.API_V1_STR}/labware/{name}",
+        f"{settings.API_V1_STR}/labware/{wellplate.id}",
         json={"location": location.value},
     )
     assert response.status_code == status.HTTP_200_OK
@@ -87,10 +96,9 @@ def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None
 
 
 def test_update_wellplate_not_found(authenticated_client: TestClient) -> None:
-    name = random_lower_string()
     location = Location.CQ1
     response = authenticated_client.patch(
-        f"{settings.API_V1_STR}/labware/{name}",
+        f"{settings.API_V1_STR}/labware/{2**16}",
         json={"location": location.value},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -130,23 +138,3 @@ def test_update_wellplate_authenticated_fails(
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {"detail": "Not authenticated"}
-
-
-def test_get_wellplate_by_name(authenticated_client: TestClient, db: Session) -> None:
-    wellplate = create_random_wellplate(session=db)
-
-    response = authenticated_client.get(
-        f"{settings.API_V1_STR}/labware/{wellplate.name}"
-    )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-
-    assert data["name"] == wellplate.name
-    assert data["plate_type"] == wellplate.plate_type.value
-
-
-def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> None:
-    name = random_lower_string()
-    response = authenticated_client.get(f"{settings.API_V1_STR}/labware/{name}")
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json() == {"detail": "Wellplate not found."}
