@@ -17,7 +17,7 @@ def db() -> Generator[Session, None, None]:
         init_db(session)
         yield session
         meta = SQLModel.metadata
-        for table in meta.sorted_tables:
+        for table in reversed(meta.sorted_tables):
             statement = delete(table)
             session.execute(statement)
         init_db(session)
