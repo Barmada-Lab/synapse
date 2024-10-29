@@ -5,6 +5,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.labware import crud
 from app.labware.models import Location, WellplateCreate, WellplateRecord, WellplateType
+from tests.labware.utils import create_random_wellplate
 from tests.utils import random_lower_string
 
 
@@ -129,3 +130,23 @@ def test_update_wellplate_authenticated_fails(
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_get_wellplate_by_name(authenticated_client: TestClient, db: Session) -> None:
+    wellplate = create_random_wellplate(session=db)
+
+    response = authenticated_client.get(
+        f"{settings.API_V1_STR}/labware/{wellplate.name}"
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert data["name"] == wellplate.name
+    assert data["plate_type"] == wellplate.plate_type.value
+
+
+def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> None:
+    name = random_lower_string()
+    response = authenticated_client.get(f"{settings.API_V1_STR}/labware/{name}")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Wellplate not found."}

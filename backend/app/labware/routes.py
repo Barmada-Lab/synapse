@@ -48,6 +48,22 @@ def create_wellplate(
     return wellplate
 
 
+@api_router.get(
+    "/{wellplate_name}",
+    response_model=WellplateRecord,
+    dependencies=[CurrentActiveUserDep],
+)
+def get_wellplate(session: SessionDep, wellplate_name: str) -> WellplateRecord:
+    if (
+        wellplate := crud.get_wellplate_by_name(session=session, name=wellplate_name)
+    ) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found."
+        )
+
+    return wellplate
+
+
 @api_router.patch(
     "/{wellplate_name}",
     response_model=WellplateRecord,
