@@ -1,4 +1,15 @@
-FROM python:3.10
+FROM python:3.10-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y \
+    zstd \
+    rsync \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 ENV PYTHONUNBUFFERED=1
 
