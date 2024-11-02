@@ -86,6 +86,18 @@ services:
       SMTP_TLS: "false"
       EMAILS_FROM_EMAIL: "noreply@example.com"
 
+  worker:
+    develop:
+      watch:
+        - path: ./backend
+          action: sync
+          target: /app
+          ignore:
+            - ./backend/.venv
+            - .venv
+        - path: ./backend/pyproject.toml
+          action: rebuild
+
   mailcatcher:
     image: schickling/mailcatcher
     ports:

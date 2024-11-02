@@ -46,6 +46,7 @@ services:
     image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
     build:
       context: ./backend
+      dockerfile: fastapi.Dockerfile
     networks:
       - traefik-public
       - default
@@ -81,6 +82,11 @@ services:
     networks:
       - traefik-public
       - default
+    volumes:
+      - app-archive-data:${ARCHIVE_DIR}
+      - app-analysis-data:${ANALYSIS_DIR}
+      - app-acquisition-data:${ACQUISITION_DIR}
+      - app-overlord-data:${OVERLORD_DIR}
     depends_on:
       db:
         condition: service_healthy
@@ -107,6 +113,12 @@ services:
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
       - SENTRY_DSN=${SENTRY_DSN}
+      - ARCHIVE_DIR=${ARCHIVE_DIR}
+      - ANALYSIS_DIR=${ANALYSIS_DIR}
+      - ACQUISITION_DIR=${ACQUISITION_DIR}
+      - OVERLORD_DIR=${OVERLORD_DIR}
+      - PREFECT_API_KEY=${PREFECT_API_KEY}
+      - PREFECT_API_URL=${PREFECT_API_URL}
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
@@ -116,6 +128,7 @@ services:
 
     build:
       context: ./backend
+      dockerfile: fastapi.Dockerfile
     labels:
       - traefik.enable=true
       - traefik.docker.network=traefik-public
@@ -133,6 +146,50 @@ services:
 
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.middlewares=https-redirect
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: prefect.Dockerfile
+    restart: always
+    networks:
+      - traefik-public
+      - default
+    volumes:
+      - app-archive-data:${ARCHIVE_DIR}
+      - app-analysis-data:${ANALYSIS_DIR}
+      - app-acquisition-data:${ACQUISITION_DIR}
+      - app-overlord-data:${OVERLORD_DIR}
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN}
+      - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - SECRET_KEY=${SECRET_KEY?Variable not set}
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - EMAILS_FROM_EMAIL=${EMAILS_FROM_EMAIL}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - ARCHIVE_DIR=${ARCHIVE_DIR}
+      - ANALYSIS_DIR=${ANALYSIS_DIR}
+      - ACQUISITION_DIR=${ACQUISITION_DIR}
+      - OVERLORD_DIR=${OVERLORD_DIR}
+      - PREFECT_API_KEY=${PREFECT_API_KEY}
+      - PREFECT_API_URL=${PREFECT_API_URL}
 
   frontend:
     image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
@@ -162,8 +219,18 @@ services:
 
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect
+
+
 volumes:
   app-db-data:
+  app-archive-data:
+    external: true
+  app-analysis-data:
+    external: true
+  app-acquisition-data:
+    external: true
+  app-overlord-data:
+    external: true
 
 networks:
   traefik-public:

@@ -5,6 +5,7 @@ from typing import Annotated, Any, Literal
 from pydantic import (
     AnyUrl,
     BeforeValidator,
+    DirectoryPath,
     HttpUrl,
     PostgresDsn,
     computed_field,
@@ -117,6 +118,11 @@ class Settings(BaseSettings):
         )
 
         return self
+
+    ARCHIVE_DIR: DirectoryPath
+    ANALYSIS_DIR: DirectoryPath
+    ACQUISITION_DIR: DirectoryPath
+    OVERLORD_DIR: DirectoryPath
 
 
 settings = Settings()  # type: ignore

@@ -1,0 +1,60 @@
+import os
+import tempfile
+from collections.abc import Generator
+from pathlib import Path
+
+import pytest
+from prefect.testing.utilities import prefect_test_harness
+
+from app.core.config import settings
+
+
+@pytest.fixture(autouse=True, scope="module")
+def prefect_test_fixture():
+    with prefect_test_harness():
+        yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def acquisition_dir() -> Generator[Path, None, None]:
+    with tempfile.TemporaryDirectory() as tempdir:
+        settings.ACQUISITION_DIR = Path(tempdir)
+        yield Path(tempdir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def analysis_dir() -> Generator[Path, None, None]:
+    with tempfile.TemporaryDirectory() as tempdir:
+        settings.ANALYSIS_DIR = Path(tempdir)
+        yield Path(tempdir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def archive_dir() -> Generator[Path, None, None]:
+    with tempfile.TemporaryDirectory() as tempdir:
+        settings.ARCHIVE_DIR = Path(tempdir)
+        yield Path(tempdir)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def overlord_dir() -> Generator[Path, None, None]:
+    with tempfile.TemporaryDirectory() as tempdir:
+        settings.OVERLORD_DIR = Path(tempdir)
+        yield Path(tempdir)
+
+
+@pytest.fixture(scope="function")
+def random_acquisition_file(acquisition_dir: Path) -> Generator[Path, None, None]:
+    with tempfile.NamedTemporaryFile(dir=acquisition_dir, delete=False) as f:
+        f.write(os.urandom(1024))
+        yield Path(f.name)
+
+
+@pytest.fixture(scope="function")
+def random_acquisition_dir(acquisition_dir: Path) -> Generator[Path, None, None]:
+    with (
+        tempfile.TemporaryDirectory(dir=acquisition_dir) as tempdir,
+        tempfile.NamedTemporaryFile(dir=tempdir, delete=False) as f,
+    ):
+        f.write(os.urandom(1024))
+        yield Path(tempdir)

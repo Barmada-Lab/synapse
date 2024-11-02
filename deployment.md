@@ -15,6 +15,27 @@ But you have to configure a couple things first. 🤓
 * Configure a wildcard subdomain for your domain, so that you can have multiple subdomains for different services, e.g. `*.fastapi-project.example.com`. This will be useful for accessing different components, like `dashboard.fastapi-project.example.com`, `api.fastapi-project.example.com`, `traefik.fastapi-project.example.com`, `adminer.fastapi-project.example.com`, etc. And also for `staging`, like `dashboard.staging.fastapi-project.example.com`, `adminer.staging..fastapi-project.example.com`, etc.
 * Install and configure [Docker](https://docs.docker.com/engine/install/) on the remote server (Docker Engine, not Docker Desktop).
 
+## Docker volumes
+
+Components of synapse are structured around our deployment environment at the University of Michigan. There are functional separations between our acquisition, analysis, and archive filesystems. In order to manage our data across these system boundaries, docker must be given access each of these filesystems.
+
+Before deployment, we must configure the required volumes (see [docker-compose.yml](./docker-compose.yml) for volumes marked external: true.)
+
+First, ensure that your volumes are all mounted via fstab.
+
+Then, to create a local bind-mount-backed volume:
+```bash
+docker volume create --driver local \
+    --opt type=none \
+    --opt "device=/path_to/local_mount" \
+    --opt o=bind \
+    VOLUME_NAME
+```
+
+replace /path_to/local_mount and VOLUME_NAME with the appropriate values for each of the specified external volumes in docker-compose.yml.
+
+The rationale behind using bind mounts is simple. We had to use a bind mount to mount our archive which we access using sshfs, so we chose to mount our other drives the same way for consistency. To ensure there's no possibility of writing to an unmounted mount point, make sure you each mountpoint is immutable by running `sudo chattr +i /path_to/local_mount` for each mount point, after ensuring the mount point is unmounted.
+
 ## Public Traefik
 
 We need a Traefik proxy to handle incoming connections and HTTPS certificates.
