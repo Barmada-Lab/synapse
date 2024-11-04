@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 
+from app.acquisitions.models import Acquisition
 from app.labware.models import Location, Wellplate
 
 
@@ -54,6 +55,10 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
     scheduled_reads: list["PlateReadSpec"] = Relationship(
         back_populates="acquisition_plan"
     )
+
+    # using Optional["AcquisitionArtifact"] because declaring
+    # "AcquisitionArtifact" | None results in a TypeError
+    acquisition: Acquisition | None = Relationship(back_populates="acquisition_plan")
 
 
 # read
