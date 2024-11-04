@@ -1,8 +1,16 @@
 import enum
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
-from sqlmodel import Column, Enum, Field, SQLModel
+from sqlmodel import Column, Enum, Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.procedures.models import AcquisitionPlan
+
+
+### WellPlate
+############################################
 
 
 class WellplateType(str, enum.Enum):
@@ -14,10 +22,6 @@ class Location(str, enum.Enum):
     KX2 = "KX2"
     CYTOMAT2 = "CYTOMAT2"
     HOTEL = "HOTEL"
-
-
-### WellPlate
-############################################
 
 
 # base
@@ -46,6 +50,10 @@ class Wellplate(WellplateBase, table=True):
             "onupdate": sa.func.now(),
             "server_default": sa.func.now(),
         },
+    )
+
+    acquisition_plans: list["AcquisitionPlan"] = Relationship(
+        back_populates="wellplate"
     )
 
 

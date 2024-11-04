@@ -40,7 +40,7 @@ class AcquisitionPlanBase(SQLModel):
 class AcquisitionPlan(AcquisitionPlanBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    wellplate: Wellplate = Relationship()
+    wellplate: Wellplate = Relationship(back_populates="acquisition_plans")
 
     protocol_name: str = Field(max_length=255)
     n_reads: int
