@@ -4,7 +4,6 @@ import os
 import platform
 import shutil
 from pathlib import Path
-from subprocess import CalledProcessError
 
 from prefect import flow, task
 from pydantic import DirectoryPath
@@ -33,15 +32,9 @@ def cleanup(path: Path):
 
 
 @task
-async def sync(origin: Path, dest: DirectoryPath, rollback: bool = False):
-    try:
-        # call separated to allow mocking
-        await _sync_cmd(origin, dest)
-    except CalledProcessError as e:
-        logger.error(f"Error syncing {origin} to {dest}: {e}")
-        if rollback:
-            cleanup(dest / origin.name)
-        raise e
+async def sync(origin: Path, dest: DirectoryPath):
+    # call separated to allow mocking
+    await _sync_cmd(origin, dest)
 
 
 async def _archive_cmd(dest_zst: Path, origin: DirectoryPath):
@@ -61,16 +54,10 @@ async def _archive_cmd(dest_zst: Path, origin: DirectoryPath):
 
 
 @task
-async def archive(origin: DirectoryPath, dest: DirectoryPath, rollback: bool = False):
+async def archive(origin: DirectoryPath, dest: DirectoryPath):
     dest_zst = dest / f"{origin.name}.tar.zst"
-    try:
-        # call separated to allow mocking
-        await _archive_cmd(dest_zst, origin)
-    except CalledProcessError as e:
-        logger.error(f"Error archiving {origin} to {dest_zst}: {e}")
-        if rollback:
-            cleanup(dest_zst)
-        raise e
+    # call separated to allow mocking
+    await _archive_cmd(dest_zst, origin)
 
 
 @task
@@ -85,7 +72,7 @@ def verify_experiment_dir(_local_dir: Path):
 
 
 @flow
-async def post_acquisition_flow(experiment_id: str, rollback: bool = False):
+async def post_acquisition_flow(experiment_id: str):
     experiment_path = (settings.ACQUISITION_DIR / experiment_id).resolve()
     if not experiment_path.is_relative_to(settings.ACQUISITION_DIR.resolve()):
         raise ValueError(
@@ -98,8 +85,8 @@ async def post_acquisition_flow(experiment_id: str, rollback: bool = False):
     verify_experiment_dir(experiment_path)
 
     results = await asyncio.gather(
-        sync(experiment_path, settings.ANALYSIS_DIR, rollback=rollback),
-        archive(experiment_path, settings.ARCHIVE_DIR, rollback=rollback),
+        sync(experiment_path, settings.ANALYSIS_DIR),
+        archive(experiment_path, settings.ARCHIVE_DIR),
         return_exceptions=True,
     )
     if any(errors := [result for result in results if isinstance(result, Exception)]):
