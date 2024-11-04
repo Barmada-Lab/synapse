@@ -1,5 +1,6 @@
 import secrets
 import warnings
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -119,10 +120,30 @@ class Settings(BaseSettings):
 
         return self
 
-    ARCHIVE_DIR: DirectoryPath
-    ANALYSIS_DIR: DirectoryPath
-    ACQUISITION_DIR: DirectoryPath
-    OVERLORD_DIR: DirectoryPath
+    ARCHIVE_DIR: DirectoryPath = Path("/tmp")
+    ANALYSIS_DIR: DirectoryPath = Path("/tmp")
+    ACQUISITION_DIR: DirectoryPath = Path("/tmp")
+    OVERLORD_DIR: DirectoryPath = Path("/tmp")
+
+    def _check_default_path(self, var_name: str, value: DirectoryPath) -> None:
+        if value == Path("/tmp"):
+            message = (
+                f'The value of {var_name} is set to the default of "/tmp". Tests '
+                "will overwrite this value with a unique temporary directory, but "
+                "change this variable to a non-default value in production settings."
+            )
+            if self.ENVIRONMENT == "local":
+                warnings.warn(message, stacklevel=1)
+            else:
+                raise ValueError(message)
+
+    @model_validator(mode="after")
+    def _enforce_non_default_fileshare_paths(self) -> Self:
+        self._check_default_path("ARCHIVE_DIR", self.ARCHIVE_DIR)
+        self._check_default_path("ANALYSIS_DIR", self.ANALYSIS_DIR)
+        self._check_default_path("ACQUISITION_DIR", self.ACQUISITION_DIR)
+        self._check_default_path("OVERLORD_DIR", self.OVERLORD_DIR)
+        return self
 
 
 settings = Settings()  # type: ignore
