@@ -98,13 +98,12 @@ def update_plateread(
             status_code=status.HTTP_404_NOT_FOUND, detail="Plate-read not found"
         )
 
-    plateread_updated = crud.update_plateread(
+    original_status = plateread_db.status
+    crud.update_plateread(
         session=session, db_plateread=plateread_db, plateread_in=plateread_in
     )
 
-    if plateread_db.status != plateread_updated.status:
-        emit_plateread_status_update(
-            plateread=plateread_updated, before=plateread_db.status
-        )
+    if original_status != plateread_db.status:
+        emit_plateread_status_update(plateread=plateread_db, before=plateread_db.status)
 
-    return PlatereadSpecRecord.model_validate(plateread_updated)
+    return PlatereadSpecRecord.model_validate(plateread_db)

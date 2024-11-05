@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -5,6 +7,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.labware import crud
 from app.labware.models import Location, WellplateCreate, WellplateRecord, WellplateType
+from tests.labware.utils import create_random_wellplate
 from tests.utils import random_lower_string
 
 
@@ -99,6 +102,37 @@ def test_update_wellplate_not_found(authenticated_client: TestClient) -> None:
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": "Wellplate not found."}
+
+
+def test_update_wellplate_emit_event(
+    authenticated_client: TestClient, db: Session
+) -> None:
+    wellplate_in = create_random_wellplate(session=db)
+    with patch("app.labware.utils.emit_event") as mock_emit_event:
+        authenticated_client.patch(
+            f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
+            json={"location": Location.CQ1.value},
+        )
+        mock_emit_event.assert_called_once_with(
+            "wellplate.location_update",
+            resource={
+                "prefect.resource.id": f"wellplate.{wellplate_in.name}",
+                "location.before": Location.EXTERNAL.value,
+                "location.after": Location.CQ1.value,
+            },
+        )
+
+
+def test_update_wellplate_no_change_doesnt_emit_event(
+    authenticated_client: TestClient, db: Session
+) -> None:
+    wellplate_in = create_random_wellplate(session=db)
+    with patch("app.labware.utils.emit_event") as mock_emit_event:
+        authenticated_client.patch(
+            f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
+            json={"location": Location.EXTERNAL.value},
+        )
+        mock_emit_event.assert_not_called()
 
 
 def test_retrieve_wellplates_unauthenticated_fails(

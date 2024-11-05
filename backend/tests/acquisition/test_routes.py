@@ -137,7 +137,9 @@ def test_scheduling_a_plan_twice_returns_400(
     assert response.json()["detail"] == "This plan has already been scheduled"
 
 
-def test_update_plateread(authenticated_client: TestClient, db: Session) -> None:
+def test_update_plateread_emit_event(
+    authenticated_client: TestClient, db: Session
+) -> None:
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]

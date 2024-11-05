@@ -13,6 +13,7 @@ from .models import (
     WellplateRecord,
     WellplateUpdate,
 )
+from .utils import emit_wellplate_location_update
 
 api_router = APIRouter()
 
@@ -57,7 +58,7 @@ def create_wellplate(
     response_model=WellplateRecord,
     dependencies=[CurrentActiveUserDep],
 )
-def update_wellplate(
+def update_wellplate_location(
     session: SessionDep,
     wellplate_id: int,
     wellplate_in: WellplateUpdate,
@@ -66,8 +67,12 @@ def update_wellplate(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found."
         )
-
+    before_location = wellplate.location
     wellplate = crud.update_wellplate(
         session=session, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
+
+    if before_location != wellplate.location:
+        emit_wellplate_location_update(wellplate=wellplate, before=before_location)
+
     return WellplateRecord.model_validate(wellplate)
