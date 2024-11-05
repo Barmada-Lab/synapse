@@ -84,7 +84,11 @@ def schedule_acquisition_plan(session: SessionDep, id: int) -> AcquisitionPlanRe
     return AcquisitionPlanRecord.model_validate(plan)
 
 
-@api_router.patch("/reads/{id}", response_model=PlatereadSpecRecord)
+@api_router.patch(
+    "/reads/{id}",
+    response_model=PlatereadSpecRecord,
+    dependencies=[CurrentActiveUserDep],
+)
 def update_plateread(
     session: SessionDep, id: int, plateread_in: PlatereadSpecUpdate
 ) -> PlatereadSpecRecord:

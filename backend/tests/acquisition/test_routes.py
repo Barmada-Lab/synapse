@@ -217,3 +217,16 @@ def test_delete_plan_by_name_requires_authentication(
         f"{settings.API_V1_STR}/acquisition/plans/{plan.name}",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_update_plateread_requires_authentication(
+    unauthenticated_client: TestClient, db: Session
+) -> None:
+    plan = create_random_acquisition_plan(session=db)
+    scheduled = schedule_plan(session=db, plan=plan)
+    read = scheduled.schedule[0]
+    response = unauthenticated_client.patch(
+        f"{settings.API_V1_STR}/acquisition/reads/{read.id}",
+        json={"status": "RUNNING"},
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
