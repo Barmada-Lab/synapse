@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from app.procedures.models import AcquisitionPlan
+    from app.acquisition.models import AcquisitionPlan
 
 
 ### WellPlate

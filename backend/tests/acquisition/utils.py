@@ -2,12 +2,12 @@ from datetime import timedelta
 
 from sqlmodel import Session
 
-from app.labware.models import Location
-from app.procedures.crud import create_acquisition_plan
-from app.procedures.models import (
+from app.acquisition.crud import create_acquisition_plan
+from app.acquisition.models import (
     AcquisitionPlanCreate,
     ImagingPriority,
 )
+from app.labware.models import Location
 from tests.labware.utils import create_random_wellplate
 from tests.utils import random_lower_string
 

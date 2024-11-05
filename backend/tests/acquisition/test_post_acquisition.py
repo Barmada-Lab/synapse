@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.acquisitions.flows import post_acquisition_flow
+from app.acquisition.flows import post_acquisition_flow
 from app.common.errors import AggregateError
 from app.core.config import settings
 
@@ -75,7 +75,7 @@ async def test_post_acquisition_flow_sync_fails(
     assert not analysis_path.exists()
     assert not archive_path.exists()
 
-    with patch("app.acquisitions.flows._sync_cmd") as mock_sync:
+    with patch("app.acquisition.flows._sync_cmd") as mock_sync:
         mock_sync.side_effect = create_file_and_raise_error(analysis_path)
         with pytest.raises(AggregateError):
             await post_acquisition_flow(experiment_id=experiment_id)
@@ -100,7 +100,7 @@ async def test_post_acquisition_flow_archive_fails(
     assert not analysis_path.exists()
     assert not archive_path.exists()
 
-    with patch("app.acquisitions.flows._archive_cmd") as mock_archive:
+    with patch("app.acquisition.flows._archive_cmd") as mock_archive:
         mock_archive.side_effect = create_file_and_raise_error(archive_path)
         with pytest.raises(AggregateError):
             await post_acquisition_flow(experiment_id=experiment_id)
@@ -122,8 +122,8 @@ async def test_post_acquisition_flow_sync_and_archive_fails(
     archive_path = settings.ARCHIVE_DIR / f"{random_acquisition_dir.name}.tar.zst"
 
     with (
-        patch("app.acquisitions.flows._sync_cmd") as mock_sync,
-        patch("app.acquisitions.flows._archive_cmd") as mock_archive,
+        patch("app.acquisition.flows._sync_cmd") as mock_sync,
+        patch("app.acquisition.flows._archive_cmd") as mock_archive,
     ):
         mock_sync.side_effect = create_file_and_raise_error(analysis_path)
         mock_archive.side_effect = create_file_and_raise_error(archive_path)

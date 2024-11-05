@@ -15,7 +15,7 @@ from .models import (
 api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
 
-@api_router.get("/", response_model=AcquisitionPlanList)
+@api_router.get("/plans", response_model=AcquisitionPlanList)
 def list_plans(
     session: SessionDep, skip: int = 0, limit: int = 100, name: str | None = None
 ) -> AcquisitionPlanList:
@@ -35,7 +35,7 @@ def list_plans(
 
 
 @api_router.post(
-    "/", response_model=AcquisitionPlanRecord, status_code=status.HTTP_201_CREATED
+    "/plans", response_model=AcquisitionPlanRecord, status_code=status.HTTP_201_CREATED
 )
 def create_plan(
     session: SessionDep, plan_create: AcquisitionPlanCreate
@@ -49,7 +49,7 @@ def create_plan(
     return AcquisitionPlanRecord.model_validate(plan)
 
 
-@api_router.delete("/{id}")
+@api_router.delete("/plans/{id}")
 def delete_plan_by_name(session: SessionDep, id: int) -> Response:
     plan = session.get(AcquisitionPlan, id)
     if plan is None:
@@ -61,7 +61,7 @@ def delete_plan_by_name(session: SessionDep, id: int) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@api_router.post("/{id}/schedule", response_model=AcquisitionPlanRecord)
+@api_router.post("/plans/{id}/schedule", response_model=AcquisitionPlanRecord)
 def schedule_acquisition_plan(session: SessionDep, id: int) -> AcquisitionPlanRecord:
     plan = session.get(AcquisitionPlan, id)
     if plan is None:

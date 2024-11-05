@@ -1,6 +1,6 @@
 from prefect import serve
 
-from app.acquisitions.flows import post_acquisition_flow
+from app.acquisition.flows import post_acquisition_flow
 
 
 def run():

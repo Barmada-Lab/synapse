@@ -4,23 +4,22 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.core.config import settings
-from app.labware.models import Location
-from app.procedures.crud import get_acquisition_plan_by_name
-from app.procedures.models import (
+from app.acquisition.crud import get_acquisition_plan_by_name
+from app.acquisition.models import (
     AcquisitionPlanCreate,
     AcquisitionPlanRecord,
 )
+from app.core.config import settings
+from app.labware.models import Location
+from tests.acquisition.utils import create_random_acquisition_plan
 from tests.labware.utils import create_random_wellplate
-from tests.procedures.utils import create_random_acquisition_plan
 from tests.utils import random_lower_string
 
 
 def test_list_plans(authenticated_client: TestClient, db: Session) -> None:
-    # create a plan
     _ = create_random_acquisition_plan(session=db)
 
-    response = authenticated_client.get(f"{settings.API_V1_STR}/procedures/")
+    response = authenticated_client.get(f"{settings.API_V1_STR}/acquisition/plans/")
     assert response.status_code == status.HTTP_200_OK
     all_plans = response.json()
 
@@ -32,7 +31,7 @@ def test_list_plans(authenticated_client: TestClient, db: Session) -> None:
 def test_query_plan_by_name(authenticated_client: TestClient, db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
     response = authenticated_client.get(
-        f"{settings.API_V1_STR}/procedures",
+        f"{settings.API_V1_STR}/acquisition/plans",
         params={"name": plan.name},
     )
     assert response.status_code == status.HTTP_200_OK
@@ -44,7 +43,7 @@ def test_query_plan_by_name(authenticated_client: TestClient, db: Session) -> No
 
 def test_get_plan_by_name_not_found(authenticated_client: TestClient) -> None:
     response = authenticated_client.get(
-        f"{settings.API_V1_STR}/procedures/",
+        f"{settings.API_V1_STR}/acquisition/plans/",
         params={"name": random_lower_string()},
     )
     assert response.status_code == status.HTTP_200_OK
@@ -62,7 +61,7 @@ def test_create_plan(authenticated_client: TestClient, db: Session) -> None:
         n_reads=1,
     ).model_dump(mode="json")
     response = authenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/",
+        f"{settings.API_V1_STR}/acquisition/plans/",
         json=json,
     )
     assert response.status_code == status.HTTP_201_CREATED
@@ -78,7 +77,7 @@ def test_create_plan_duplicate_returns_400(
 ) -> None:
     plan_a = create_random_acquisition_plan(session=db)
     response = authenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/",
+        f"{settings.API_V1_STR}/acquisition/plans/",
         json=plan_a.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -88,7 +87,7 @@ def test_create_plan_duplicate_returns_400(
 def test_delete_plan_by_id(authenticated_client: TestClient, db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
     response = authenticated_client.delete(
-        f"{settings.API_V1_STR}/procedures/{plan.id}",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}",
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -98,7 +97,7 @@ def test_delete_plan_by_id(authenticated_client: TestClient, db: Session) -> Non
 
 def test_delete_plan_by_id_not_found(authenticated_client: TestClient) -> None:
     response = authenticated_client.delete(
-        f"{settings.API_V1_STR}/procedures/{2**16}",
+        f"{settings.API_V1_STR}/acquisition/plans/{2**16}",
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json()["detail"] == "Plan not found"
@@ -116,7 +115,7 @@ def test_schedule_acquisition_plan(
         deadline_delta=deadline_delta,
     )
     response = authenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/{plan.id}/schedule",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
     )
     assert response.status_code == status.HTTP_200_OK
     record = AcquisitionPlanRecord.model_validate(response.json())
@@ -128,17 +127,17 @@ def test_scheduling_a_plan_twice_returns_400(
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     _ = authenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/{plan.id}/schedule",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
     )
     response = authenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/{plan.id}/schedule",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "This plan has already been scheduled"
 
 
 def test_list_plans_requires_authentication(unauthenticated_client: TestClient) -> None:
-    response = unauthenticated_client.get(f"{settings.API_V1_STR}/procedures/")
+    response = unauthenticated_client.get(f"{settings.API_V1_STR}/acquisition/plans/")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -154,7 +153,7 @@ def test_create_plan_requires_authentication(
         n_reads=1,
     ).model_dump(mode="json")
     response = unauthenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/",
+        f"{settings.API_V1_STR}/acquisition/plans/",
         json=json,
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -165,7 +164,7 @@ def test_schedule_acquisition_plan_requires_authentication(
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     response = unauthenticated_client.post(
-        f"{settings.API_V1_STR}/procedures/{plan.id}/schedule",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -175,6 +174,6 @@ def test_delete_plan_by_name_requires_authentication(
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     response = unauthenticated_client.delete(
-        f"{settings.API_V1_STR}/procedures/{plan.name}",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.name}",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
