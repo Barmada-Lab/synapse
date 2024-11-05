@@ -12,6 +12,7 @@ from .models import (
     ArtifactCollection,
     ArtifactCollectionCreate,
     PlateReadSpec,
+    PlateReadSpecUpdate,
 )
 
 
@@ -51,6 +52,20 @@ def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan
     session.commit()
     session.refresh(plan)
     return plan
+
+
+def update_plate_read(
+    *,
+    session: Session,
+    db_plate_read: PlateReadSpec,
+    plate_read_in: PlateReadSpecUpdate,
+) -> PlateReadSpec:
+    plate_read_data = plate_read_in.model_dump(exclude_unset=True)
+    db_plate_read.sqlmodel_update(plate_read_data)
+    session.add(db_plate_read)
+    session.commit()
+    session.refresh(db_plate_read)
+    return db_plate_read
 
 
 def create_acquisition(

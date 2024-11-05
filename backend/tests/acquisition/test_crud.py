@@ -17,6 +17,7 @@ from app.acquisition.models import (
     ArtifactCollectionCreate,
     ArtifactType,
     ImagingPriority,
+    PlateReadSpecUpdate,
     PlateReadStatus,
     Repository,
 )
@@ -316,3 +317,15 @@ def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
             session=db, artifact_collection_create=artifact_collection_create
         )
         assert "Duplicate artifact collection" in str(e)
+
+
+def test_update_plate_read(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db)
+    plan = schedule_plan(session=db, plan=plan)
+
+    plate_read = plan.scheduled_reads[0]
+    plate_read_in = PlateReadSpecUpdate(status=PlateReadStatus.COMPLETED)
+    updated = crud.update_plate_read(
+        session=db, db_plate_read=plate_read, plate_read_in=plate_read_in
+    )
+    assert updated.status == PlateReadStatus.COMPLETED

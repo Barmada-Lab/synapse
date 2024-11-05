@@ -67,7 +67,7 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
 # read
 class AcquisitionPlanRecord(AcquisitionPlanBase):
     id: int
-    scheduled_reads: list["PlateReadSpec"] = []
+    scheduled_reads: list["PlateReadSpecRecord"] = []
 
 
 class AcquisitionPlanCreate(AcquisitionPlanBase):
@@ -83,19 +83,28 @@ class AcquisitionPlanList(SQLModel):
 ################################################
 
 
-class PlateReadSpec(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-
+class PlateReadSpecBase(SQLModel):
     start_after: datetime
     deadline: datetime | None
-
     status: PlateReadStatus = Field(
         sa_column=Column(Enum(PlateReadStatus), nullable=False),
         default=PlateReadStatus.PENDING,
     )
 
+
+class PlateReadSpec(PlateReadSpecBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
     acquisition_plan_id: int = Field(foreign_key="acquisitionplan.id")
     acquisition_plan: AcquisitionPlan = Relationship(back_populates="scheduled_reads")
+
+
+class PlateReadSpecRecord(PlateReadSpecBase):
+    id: int
+
+
+class PlateReadSpecUpdate(SQLModel):
+    status: PlateReadStatus
 
 
 #################################################################################
