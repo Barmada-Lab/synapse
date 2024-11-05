@@ -17,7 +17,7 @@ branch_labels = None
 depends_on = None
 
 WELLPLATE_ENUM = sa.Enum("REVVITY_PHENOPLATE_96", name="wellplatetype")
-LOCATION_ENUM = sa.Enum("CQ1", "KX2", "CYTOMAT2", "HOTEL", name="location")
+LOCATION_ENUM = sa.Enum("CQ1", "KX2", "CYTOMAT2", "HOTEL", "EXTERNAL", name="location")
 
 def upgrade():
     WELLPLATE_ENUM.create(op.get_bind())
@@ -31,7 +31,7 @@ def upgrade():
         sa.PrimaryKeyConstraint('id')
     )
     op.add_column('wellplate', sa.Column('plate_type', WELLPLATE_ENUM, nullable=False))
-    op.add_column('wellplate', sa.Column('location', LOCATION_ENUM, nullable=True))
+    op.add_column('wellplate', sa.Column('location', LOCATION_ENUM, nullable=False))
     op.create_index(op.f('ix_wellplate_name'), 'wellplate', ['name'], unique=True)
 
 

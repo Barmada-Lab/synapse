@@ -22,13 +22,14 @@ class Location(str, enum.Enum):
     KX2 = "KX2"
     CYTOMAT2 = "CYTOMAT2"
     HOTEL = "HOTEL"
+    EXTERNAL = "EXTERNAL"
 
 
 # base
 class WellplateBase(SQLModel):
     name: str = Field(unique=True, index=True, max_length=255)
     plate_type: WellplateType
-    location: Location | None
+    location: Location
     record_created: datetime
     last_update: datetime
 
@@ -39,8 +40,8 @@ class Wellplate(WellplateBase, table=True):
     plate_type: WellplateType = Field(
         sa_column=Column(Enum(WellplateType), nullable=False)
     )
-    location: Location | None = Field(
-        default=None, sa_column=Column(Enum(Location), nullable=True)
+    location: Location = Field(
+        default=Location.EXTERNAL, sa_column=Column(Enum(Location), nullable=True)
     )
 
     record_created: datetime = Field(default_factory=datetime.now)
@@ -64,7 +65,7 @@ class WellplateCreate(SQLModel):
 
 
 class WellplateUpdate(SQLModel):
-    location: Location | None
+    location: Location
 
 
 class WellplateRecord(WellplateBase):
