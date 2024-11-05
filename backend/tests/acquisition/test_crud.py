@@ -17,8 +17,8 @@ from app.acquisition.models import (
     ArtifactCollectionCreate,
     ArtifactType,
     ImagingPriority,
-    PlateReadSpecUpdate,
-    PlateReadStatus,
+    PlatereadSpecUpdate,
+    PlatereadStatus,
     Repository,
 )
 from app.labware.models import Location, Wellplate
@@ -57,7 +57,7 @@ def test_create_acquisition_plan(db: Session) -> None:
     assert record.n_reads == n_reads
     assert record.interval == interval
     assert record.priority == priority
-    assert record.scheduled_reads == []
+    assert record.schedule == []
 
 
 def test_create_acquisition_plan_with_long_name_fails(db: Session) -> None:
@@ -205,11 +205,11 @@ def test_materialize_schedule(db: Session) -> None:
         deadline_delta=timedelta(minutes=1),
     )
     plan = schedule_plan(session=db, plan=plan)
-    assert len(plan.scheduled_reads) == 2
-    assert all(r.status == PlateReadStatus.PENDING for r in plan.scheduled_reads)
+    assert len(plan.schedule) == 2
+    assert all(r.status == PlatereadStatus.PENDING for r in plan.schedule)
 
-    t0 = plan.scheduled_reads[0]
-    t1 = plan.scheduled_reads[1]
+    t0 = plan.schedule[0]
+    t1 = plan.schedule[1]
     assert t0.start_after + timedelta(minutes=2) == t1.start_after
     assert t0.start_after + timedelta(minutes=1) == t0.deadline
 
@@ -319,13 +319,13 @@ def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
         assert "Duplicate artifact collection" in str(e)
 
 
-def test_update_plate_read(db: Session) -> None:
+def test_update_plateread(db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
     plan = schedule_plan(session=db, plan=plan)
 
-    plate_read = plan.scheduled_reads[0]
-    plate_read_in = PlateReadSpecUpdate(status=PlateReadStatus.COMPLETED)
-    updated = crud.update_plate_read(
-        session=db, db_plate_read=plate_read, plate_read_in=plate_read_in
+    plateread = plan.schedule[0]
+    plateread_in = PlatereadSpecUpdate(status=PlatereadStatus.COMPLETED)
+    updated = crud.update_plateread(
+        session=db, db_plateread=plateread, plateread_in=plateread_in
     )
-    assert updated.status == PlateReadStatus.COMPLETED
+    assert updated.status == PlatereadStatus.COMPLETED

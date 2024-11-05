@@ -1,10 +1,11 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.acquisition.crud import get_acquisition_plan_by_name
+from app.acquisition.crud import get_acquisition_plan_by_name, schedule_plan
 from app.acquisition.models import (
     AcquisitionPlanCreate,
     AcquisitionPlanRecord,
@@ -119,7 +120,7 @@ def test_schedule_acquisition_plan(
     )
     assert response.status_code == status.HTTP_200_OK
     record = AcquisitionPlanRecord.model_validate(response.json())
-    assert len(record.scheduled_reads) == 2
+    assert len(record.schedule) == 2
 
 
 def test_scheduling_a_plan_twice_returns_400(
@@ -134,6 +135,45 @@ def test_scheduling_a_plan_twice_returns_400(
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "This plan has already been scheduled"
+
+
+def test_update_plateread(authenticated_client: TestClient, db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db)
+    scheduled = schedule_plan(session=db, plan=plan)
+    read = scheduled.schedule[0]
+    with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
+        response = authenticated_client.post(
+            f"{settings.API_V1_STR}/acquisition/reads/{read.id}/update",
+            json={"status": "RUNNING"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["status"] == "RUNNING"
+        mock.assert_called_once()
+
+
+def test_update_plateread_not_found(authenticated_client: TestClient) -> None:
+    response = authenticated_client.post(
+        f"{settings.API_V1_STR}/acquisition/reads/{2**16}/update",
+        json={"status": "RUNNING"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Plate-read not found"
+
+
+def test_update_plateread_no_change(
+    authenticated_client: TestClient, db: Session
+) -> None:
+    plan = create_random_acquisition_plan(session=db)
+    scheduled = schedule_plan(session=db, plan=plan)
+    read = scheduled.schedule[0]
+    with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
+        response = authenticated_client.post(
+            f"{settings.API_V1_STR}/acquisition/reads/{read.id}/update",
+            json={"status": read.status.value},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["status"] == read.status.value
+        mock.assert_not_called()
 
 
 def test_list_plans_requires_authentication(unauthenticated_client: TestClient) -> None:

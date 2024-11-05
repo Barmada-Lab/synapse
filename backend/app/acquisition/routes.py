@@ -4,13 +4,17 @@ from sqlmodel import func, select
 from app.core.deps import SessionDep
 from app.users.deps import CurrentActiveUserDep
 
-from .crud import create_acquisition_plan, get_acquisition_plan_by_name, schedule_plan
+from . import crud
 from .models import (
     AcquisitionPlan,
     AcquisitionPlanCreate,
     AcquisitionPlanList,
     AcquisitionPlanRecord,
+    PlatereadSpec,
+    PlatereadSpecRecord,
+    PlatereadSpecUpdate,
 )
+from .utils import emit_plateread_status_update
 
 api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
@@ -40,12 +44,15 @@ def list_plans(
 def create_plan(
     session: SessionDep, plan_create: AcquisitionPlanCreate
 ) -> AcquisitionPlanRecord:
-    if get_acquisition_plan_by_name(session=session, name=plan_create.name) is not None:
+    if (
+        crud.get_acquisition_plan_by_name(session=session, name=plan_create.name)
+        is not None
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A plan with this name already exists.",
         )
-    plan = create_acquisition_plan(session=session, plan_create=plan_create)
+    plan = crud.create_acquisition_plan(session=session, plan_create=plan_create)
     return AcquisitionPlanRecord.model_validate(plan)
 
 
@@ -68,10 +75,31 @@ def schedule_acquisition_plan(session: SessionDep, id: int) -> AcquisitionPlanRe
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found"
         )
-    if plan.scheduled_reads != []:
+    if plan.schedule != []:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This plan has already been scheduled",
         )
-    plan = schedule_plan(session=session, plan=plan)
+    plan = crud.schedule_plan(session=session, plan=plan)
     return AcquisitionPlanRecord.model_validate(plan)
+
+
+@api_router.post("/reads/{id}/update", response_model=PlatereadSpecRecord)
+def update_plateread(
+    session: SessionDep, id: int, plateread_in: PlatereadSpecUpdate
+) -> PlatereadSpecRecord:
+    plateread_db = session.get(PlatereadSpec, id)
+    if plateread_db is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Plate-read not found"
+        )
+
+    if plateread_db.status == plateread_in.status:
+        return PlatereadSpecRecord.model_validate(plateread_db)
+
+    before = plateread_db.status
+    updated_plateread = crud.update_plateread(
+        session=session, db_plateread=plateread_db, plateread_in=plateread_in
+    )
+    emit_plateread_status_update(plateread=updated_plateread, before=before)
+    return PlatereadSpecRecord.model_validate(updated_plateread)

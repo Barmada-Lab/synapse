@@ -11,8 +11,8 @@ from .models import (
     AcquisitionPlanCreate,
     ArtifactCollection,
     ArtifactCollectionCreate,
-    PlateReadSpec,
-    PlateReadSpecUpdate,
+    PlatereadSpec,
+    PlatereadSpecUpdate,
 )
 
 
@@ -43,7 +43,7 @@ def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan
         start_after = start_time + (i * plan.interval)
         deadline = start_time + i * plan.interval + plan.deadline_delta
         session.add(
-            PlateReadSpec(
+            PlatereadSpec(
                 start_after=start_after,
                 deadline=deadline,
                 acquisition_plan_id=plan.id,
@@ -54,18 +54,18 @@ def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan
     return plan
 
 
-def update_plate_read(
+def update_plateread(
     *,
     session: Session,
-    db_plate_read: PlateReadSpec,
-    plate_read_in: PlateReadSpecUpdate,
-) -> PlateReadSpec:
-    plate_read_data = plate_read_in.model_dump(exclude_unset=True)
-    db_plate_read.sqlmodel_update(plate_read_data)
-    session.add(db_plate_read)
+    db_plateread: PlatereadSpec,
+    plateread_in: PlatereadSpecUpdate,
+) -> PlatereadSpec:
+    plateread_data = plateread_in.model_dump(exclude_unset=True)
+    db_plateread.sqlmodel_update(plateread_data)
+    session.add(db_plateread)
     session.commit()
-    session.refresh(db_plate_read)
-    return db_plate_read
+    session.refresh(db_plateread)
+    return db_plateread
 
 
 def create_acquisition(

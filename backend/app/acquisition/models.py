@@ -8,7 +8,7 @@ from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 from app.labware.models import Location, Wellplate
 
 
-class PlateReadStatus(str, enum.Enum):
+class PlatereadStatus(str, enum.Enum):
     PENDING = "PENDING"
     SCHEDULED = "SCHEDULED"
     RUNNING = "RUNNING"
@@ -53,9 +53,7 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         default=ImagingPriority.NORMAL,
     )
 
-    scheduled_reads: list["PlateReadSpec"] = Relationship(
-        back_populates="acquisition_plan"
-    )
+    schedule: list["PlatereadSpec"] = Relationship(back_populates="acquisition_plan")
 
     # using Optional["AcquisitionArtifact"] because declaring
     # "AcquisitionArtifact" | None results in a TypeError
@@ -67,7 +65,7 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
 # read
 class AcquisitionPlanRecord(AcquisitionPlanBase):
     id: int
-    scheduled_reads: list["PlateReadSpecRecord"] = []
+    schedule: list["PlatereadSpecRecord"] = []
 
 
 class AcquisitionPlanCreate(AcquisitionPlanBase):
@@ -83,28 +81,28 @@ class AcquisitionPlanList(SQLModel):
 ################################################
 
 
-class PlateReadSpecBase(SQLModel):
+class PlatereadSpecBase(SQLModel):
     start_after: datetime
     deadline: datetime | None
-    status: PlateReadStatus = Field(
-        sa_column=Column(Enum(PlateReadStatus), nullable=False),
-        default=PlateReadStatus.PENDING,
+    status: PlatereadStatus = Field(
+        sa_column=Column(Enum(PlatereadStatus), nullable=False),
+        default=PlatereadStatus.PENDING,
     )
 
 
-class PlateReadSpec(PlateReadSpecBase, table=True):
+class PlatereadSpec(PlatereadSpecBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     acquisition_plan_id: int = Field(foreign_key="acquisitionplan.id")
-    acquisition_plan: AcquisitionPlan = Relationship(back_populates="scheduled_reads")
+    acquisition_plan: AcquisitionPlan = Relationship(back_populates="schedule")
 
 
-class PlateReadSpecRecord(PlateReadSpecBase):
+class PlatereadSpecRecord(PlatereadSpecBase):
     id: int
 
 
-class PlateReadSpecUpdate(SQLModel):
-    status: PlateReadStatus
+class PlatereadSpecUpdate(SQLModel):
+    status: PlatereadStatus
 
 
 #################################################################################
