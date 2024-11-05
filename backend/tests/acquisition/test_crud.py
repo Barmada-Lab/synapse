@@ -329,3 +329,5 @@ def test_update_plateread(db: Session) -> None:
         session=db, db_plateread=plateread, plateread_in=plateread_in
     )
     assert updated.status == PlatereadStatus.COMPLETED
+    # verify update_plateread is not mutating its arguments
+    assert plateread.status != updated.status

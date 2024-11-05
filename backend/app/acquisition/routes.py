@@ -84,7 +84,7 @@ def schedule_acquisition_plan(session: SessionDep, id: int) -> AcquisitionPlanRe
     return AcquisitionPlanRecord.model_validate(plan)
 
 
-@api_router.post("/reads/{id}/update", response_model=PlatereadSpecRecord)
+@api_router.patch("/reads/{id}", response_model=PlatereadSpecRecord)
 def update_plateread(
     session: SessionDep, id: int, plateread_in: PlatereadSpecUpdate
 ) -> PlatereadSpecRecord:
@@ -94,12 +94,13 @@ def update_plateread(
             status_code=status.HTTP_404_NOT_FOUND, detail="Plate-read not found"
         )
 
-    if plateread_db.status == plateread_in.status:
-        return PlatereadSpecRecord.model_validate(plateread_db)
-
-    before = plateread_db.status
-    updated_plateread = crud.update_plateread(
+    plateread_updated = crud.update_plateread(
         session=session, db_plateread=plateread_db, plateread_in=plateread_in
     )
-    emit_plateread_status_update(plateread=updated_plateread, before=before)
-    return PlatereadSpecRecord.model_validate(updated_plateread)
+
+    if plateread_db.status != plateread_updated.status:
+        emit_plateread_status_update(
+            plateread=plateread_updated, before=plateread_db.status
+        )
+
+    return PlatereadSpecRecord.model_validate(plateread_updated)

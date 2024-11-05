@@ -142,8 +142,8 @@ def test_update_plateread(authenticated_client: TestClient, db: Session) -> None
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
     with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
-        response = authenticated_client.post(
-            f"{settings.API_V1_STR}/acquisition/reads/{read.id}/update",
+        response = authenticated_client.patch(
+            f"{settings.API_V1_STR}/acquisition/reads/{read.id}",
             json={"status": "RUNNING"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -152,8 +152,8 @@ def test_update_plateread(authenticated_client: TestClient, db: Session) -> None
 
 
 def test_update_plateread_not_found(authenticated_client: TestClient) -> None:
-    response = authenticated_client.post(
-        f"{settings.API_V1_STR}/acquisition/reads/{2**16}/update",
+    response = authenticated_client.patch(
+        f"{settings.API_V1_STR}/acquisition/reads/{2**16}",
         json={"status": "RUNNING"},
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -167,8 +167,8 @@ def test_update_plateread_no_change(
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
     with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
-        response = authenticated_client.post(
-            f"{settings.API_V1_STR}/acquisition/reads/{read.id}/update",
+        response = authenticated_client.patch(
+            f"{settings.API_V1_STR}/acquisition/reads/{read.id}",
             json={"status": read.status.value},
         )
         assert response.status_code == status.HTTP_200_OK

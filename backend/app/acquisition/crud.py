@@ -61,11 +61,11 @@ def update_plateread(
     plateread_in: PlatereadSpecUpdate,
 ) -> PlatereadSpec:
     plateread_data = plateread_in.model_dump(exclude_unset=True)
-    db_plateread.sqlmodel_update(plateread_data)
-    session.add(db_plateread)
+    db_obj = db_plateread.model_copy()
+    db_obj.sqlmodel_update(plateread_data)
+    session.add(db_obj)
     session.commit()
-    session.refresh(db_plateread)
-    return db_plateread
+    return db_obj
 
 
 def create_acquisition(
