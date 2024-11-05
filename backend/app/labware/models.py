@@ -2,7 +2,6 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-import sqlalchemy as sa
 from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -31,7 +30,6 @@ class WellplateBase(SQLModel):
     plate_type: WellplateType
     location: Location
     record_created: datetime
-    last_update: datetime
 
 
 # table
@@ -45,13 +43,6 @@ class Wellplate(WellplateBase, table=True):
     )
 
     record_created: datetime = Field(default_factory=datetime.now)
-    last_update: datetime = Field(
-        default_factory=datetime.now,
-        sa_column_kwargs={
-            "onupdate": sa.func.now(),
-            "server_default": sa.func.now(),
-        },
-    )
 
     acquisition_plans: list["AcquisitionPlan"] = Relationship(
         back_populates="wellplate"

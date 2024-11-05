@@ -27,7 +27,6 @@ def upgrade():
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column('record_created', sa.DateTime(), nullable=False),
-        sa.Column('last_update', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
     op.add_column('wellplate', sa.Column('plate_type', WELLPLATE_ENUM, nullable=False))

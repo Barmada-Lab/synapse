@@ -77,9 +77,6 @@ def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     wellplate = crud.create_wellplate(session=db, wellplate_create=wellplate_in)
 
-    assert wellplate.location is None
-    last_last_update = wellplate.last_update
-
     location = Location.CQ1
     response = authenticated_client.patch(
         f"{settings.API_V1_STR}/labware/{wellplate.id}",
@@ -92,7 +89,6 @@ def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None
 
     db.refresh(wellplate)
     assert wellplate.location == location
-    assert wellplate.last_update > last_last_update
 
 
 def test_update_wellplate_not_found(authenticated_client: TestClient) -> None:
