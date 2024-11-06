@@ -93,3 +93,9 @@ async def post_acquisition_flow(experiment_id: str):
         raise AggregateError(*errors)
 
     rmtree(experiment_path)
+
+
+def get_deployments():
+    return [
+        post_acquisition_flow.to_deployment(name="post-acquisition-flow"),
+    ]

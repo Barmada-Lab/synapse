@@ -145,5 +145,8 @@ class Settings(BaseSettings):
         self._check_default_path("OVERLORD_DIR", self.OVERLORD_DIR)
         return self
 
+    ZPL_PRINTER_HOST: str
+    ZPL_PRINTER_PORT: int
+
 
 settings = Settings()  # type: ignore
