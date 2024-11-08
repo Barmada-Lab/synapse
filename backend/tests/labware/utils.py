@@ -8,7 +8,7 @@ from tests.utils import random_lower_string
 
 
 def create_random_wellplate(*, session: Session, **kwargs):
-    kwargs.setdefault("name", random_lower_string())
+    kwargs.setdefault("name", random_lower_string(9))
     kwargs.setdefault("plate_type", random.choice(list(WellplateType)))
     wellplate_create = WellplateCreate(**kwargs)
     wellplate = create_wellplate(session=session, wellplate_create=wellplate_create)

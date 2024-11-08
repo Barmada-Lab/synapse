@@ -13,7 +13,7 @@ from tests.utils import random_lower_string
 
 def test_retrieve_wellplates(authenticated_client: TestClient, db: Session) -> None:
     # create a wellplate
-    name = random_lower_string()
+    name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     crud.create_wellplate(session=db, wellplate_create=wellplate_in)
@@ -28,7 +28,7 @@ def test_retrieve_wellplates(authenticated_client: TestClient, db: Session) -> N
 
 
 def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     response = authenticated_client.get(
         f"{settings.API_V1_STR}/labware", params={"name": name}
     )
@@ -38,7 +38,7 @@ def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> No
 
 
 def test_create_wellplate(authenticated_client: TestClient, db: Session) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96.value
 
     response = authenticated_client.post(
@@ -58,10 +58,28 @@ def test_create_wellplate(authenticated_client: TestClient, db: Session) -> None
     assert wellplate.plate_type == WellplateType.REVVITY_PHENOPLATE_96
 
 
+def test_create_wellplate_empty_name(authenticated_client: TestClient) -> None:
+    name = ""
+    response = authenticated_client.post(
+        f"{settings.API_V1_STR}/labware/",
+        json={"name": name, "plate_type": WellplateType.REVVITY_PHENOPLATE_96.value},
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_create_wellplate_long_name(authenticated_client: TestClient) -> None:
+    name = random_lower_string(10)
+    response = authenticated_client.post(
+        f"{settings.API_V1_STR}/labware/",
+        json={"name": name, "plate_type": WellplateType.REVVITY_PHENOPLATE_96.value},
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
 def test_create_wellplate_duplicate_fails(
     authenticated_client: TestClient, db: Session
 ) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     crud.create_wellplate(session=db, wellplate_create=wellplate_in)
@@ -75,7 +93,7 @@ def test_create_wellplate_duplicate_fails(
 
 
 def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     wellplate = crud.create_wellplate(session=db, wellplate_create=wellplate_in)
@@ -146,7 +164,7 @@ def test_retrieve_wellplates_unauthenticated_fails(
 def test_create_wellplate_unauthenticated_fails(
     unauthenticated_client: TestClient,
 ) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96.value
 
     response = unauthenticated_client.post(
@@ -160,7 +178,7 @@ def test_create_wellplate_unauthenticated_fails(
 def test_update_wellplate_authenticated_fails(
     unauthenticated_client: TestClient,
 ) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     location = Location.CQ1
     response = unauthenticated_client.patch(
         f"{settings.API_V1_STR}/labware/{name}",

@@ -1,3 +1,5 @@
+import pytest
+from pydantic import ValidationError
 from sqlmodel import Session
 
 from app.labware import crud
@@ -12,7 +14,7 @@ from tests.utils import random_lower_string
 
 
 def test_create_wellplate(db: Session) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     well_plate_in = WellplateCreate(
         name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
@@ -21,8 +23,23 @@ def test_create_wellplate(db: Session) -> None:
     assert well_plate.plate_type == well_plate_in.plate_type
 
 
+def test_create_wellplate_empty_name(db: Session) -> None:
+    name = ""
+    with pytest.raises(ValidationError):
+        _ = WellplateCreate(
+            name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
+        )
+
+def test_create_wellplate_long_name(db: Session):
+    name = random_lower_string(10)
+    with pytest.raises(ValidationError):
+        _ = WellplateCreate(
+            name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
+        )
+
+
 def test_update_wellplate(db: Session) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     well_plate_in = WellplateCreate(
         name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
@@ -39,7 +56,7 @@ def test_update_wellplate(db: Session) -> None:
 
 
 def test_get_wellplate_by_name(db: Session) -> None:
-    name = random_lower_string()
+    name = random_lower_string(9)
     well_plate_in = WellplateCreate(
         name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
     )
