@@ -29,7 +29,7 @@ class ImagingPriority(str, enum.Enum):
 
 class AcquisitionPlanBase(SQLModel):
     name: str = Field(unique=True, index=True, min_length=1, max_length=255)
-    wellplate_id: int = Field(foreign_key="wellplate.id")
+    wellplate_id: int = Field(foreign_key="wellplate.id", ondelete="CASCADE")
     storage_location: Location
     protocol_name: str = Field(max_length=255)
     n_reads: int = Field(ge=1)
@@ -53,12 +53,12 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         default=ImagingPriority.NORMAL,
     )
 
-    schedule: list["PlatereadSpec"] = Relationship(back_populates="acquisition_plan")
+    schedule: list["PlatereadSpec"] = Relationship(back_populates="acquisition_plan", cascade_delete=True)
 
     # using Optional["AcquisitionArtifact"] because declaring
     # "AcquisitionArtifact" | None results in a TypeError
     acquisition: Optional["Acquisition"] = Relationship(
-        back_populates="acquisition_plan"
+        back_populates="acquisition_plan",
     )
 
 
@@ -93,7 +93,7 @@ class PlatereadSpecBase(SQLModel):
 class PlatereadSpec(PlatereadSpecBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    acquisition_plan_id: int = Field(foreign_key="acquisitionplan.id")
+    acquisition_plan_id: int = Field(foreign_key="acquisitionplan.id", ondelete="CASCADE")
     acquisition_plan: AcquisitionPlan = Relationship(back_populates="schedule")
 
 
