@@ -13,6 +13,7 @@ from app.acquisition.crud import (
 )
 from app.acquisition.models import (
     AcquisitionCreate,
+    AcquisitionPlan,
     AcquisitionPlanCreate,
     ArtifactCollectionCreate,
     ArtifactType,
@@ -175,15 +176,14 @@ def test_create_acquisition_plan_with_invalid_wellplate_id_raises_value_error(
         create_random_acquisition_plan(session=db, wellplate_id=2**16)
 
 
-def test_delete_wellplate_associated_with_acquisition_plan_raises_integrityerror(
+def test_delete_wellplate_associated_with_acquisition_plan_cascades_delete(
     db: Session,
 ) -> None:
     wellplate = create_random_wellplate(session=db)
-    _ = create_random_acquisition_plan(session=db, wellplate_id=wellplate.id)
-    with pytest.raises(IntegrityError):
-        db.delete(wellplate)
-        db.commit()
-    db.rollback()  # reset session state
+    plan = create_random_acquisition_plan(session=db, wellplate_id=wellplate.id)
+    db.delete(wellplate)
+    db.commit()
+    assert db.get(AcquisitionPlan, plan.id) is None
 
 
 def test_get_acquisition_plan_by_name(db: Session) -> None:
