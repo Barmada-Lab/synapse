@@ -104,39 +104,6 @@ def test_delete_plan_by_id_not_found(authenticated_client: TestClient) -> None:
     assert response.json()["detail"] == "Plan not found"
 
 
-def test_schedule_acquisition_plan(
-    authenticated_client: TestClient, db: Session
-) -> None:
-    interval = timedelta(minutes=10)
-    deadline_delta = timedelta(minutes=5)
-    plan = create_random_acquisition_plan(
-        session=db,
-        n_reads=2,
-        interval=interval,
-        deadline_delta=deadline_delta,
-    )
-    response = authenticated_client.post(
-        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
-    )
-    assert response.status_code == status.HTTP_200_OK
-    record = AcquisitionPlanRecord.model_validate(response.json())
-    assert len(record.schedule) == 2
-
-
-def test_scheduling_a_plan_twice_returns_400(
-    authenticated_client: TestClient, db: Session
-) -> None:
-    plan = create_random_acquisition_plan(session=db)
-    _ = authenticated_client.post(
-        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
-    )
-    response = authenticated_client.post(
-        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
-    )
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()["detail"] == "This plan has already been scheduled"
-
-
 def test_update_plateread_emit_event(
     authenticated_client: TestClient, db: Session
 ) -> None:
@@ -197,16 +164,6 @@ def test_create_plan_requires_authentication(
     response = unauthenticated_client.post(
         f"{settings.API_V1_STR}/acquisition/plans/",
         json=json,
-    )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-def test_schedule_acquisition_plan_requires_authentication(
-    unauthenticated_client: TestClient, db: Session
-) -> None:
-    plan = create_random_acquisition_plan(session=db)
-    response = unauthenticated_client.post(
-        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}/schedule",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

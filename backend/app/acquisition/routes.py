@@ -20,7 +20,7 @@ api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
 
 @api_router.get("/plans", response_model=AcquisitionPlanList)
-def list_plans(
+def list_acquisition_plans(
     session: SessionDep, skip: int = 0, limit: int = 100, name: str | None = None
 ) -> AcquisitionPlanList:
     # TODO: make this betta
@@ -41,7 +41,7 @@ def list_plans(
 @api_router.post(
     "/plans", response_model=AcquisitionPlanRecord, status_code=status.HTTP_201_CREATED
 )
-def create_plan(
+def create_acquisition_plan(
     session: SessionDep, plan_create: AcquisitionPlanCreate
 ) -> AcquisitionPlanRecord:
     if (
@@ -57,7 +57,7 @@ def create_plan(
 
 
 @api_router.delete("/plans/{id}")
-def delete_plan_by_name(session: SessionDep, id: int) -> Response:
+def delete_acquisition_plan(session: SessionDep, id: int) -> Response:
     plan = session.get(AcquisitionPlan, id)
     if plan is None:
         raise HTTPException(
@@ -66,22 +66,6 @@ def delete_plan_by_name(session: SessionDep, id: int) -> Response:
     session.delete(plan)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@api_router.post("/plans/{id}/schedule", response_model=AcquisitionPlanRecord)
-def schedule_acquisition_plan(session: SessionDep, id: int) -> AcquisitionPlanRecord:
-    plan = session.get(AcquisitionPlan, id)
-    if plan is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found"
-        )
-    if plan.schedule != []:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This plan has already been scheduled",
-        )
-    plan = crud.schedule_plan(session=session, plan=plan)
-    return AcquisitionPlanRecord.model_validate(plan)
 
 
 @api_router.patch(
