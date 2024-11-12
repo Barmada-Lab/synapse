@@ -153,7 +153,7 @@ def test_update_wellplate_no_change_doesnt_emit_event(
         mock_emit_event.assert_not_called()
 
 
-def test_retrieve_wellplates_unauthenticated_fails(
+def test_list_wellplates_unauthenticated_fails(
     unauthenticated_client: TestClient,
 ) -> None:
     response = unauthenticated_client.get(f"{settings.API_V1_STR}/labware/")
@@ -178,11 +178,19 @@ def test_create_wellplate_unauthenticated_fails(
 def test_update_wellplate_authenticated_fails(
     unauthenticated_client: TestClient,
 ) -> None:
-    name = random_lower_string(9)
-    location = Location.CQ1
     response = unauthenticated_client.patch(
-        f"{settings.API_V1_STR}/labware/{name}",
-        json={"location": location.value},
+        f"{settings.API_V1_STR}/labware/1",
+        json={"location": Location.CQ1.value},
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_print_barcode_unauthenticated_fails(
+    unauthenticated_client: TestClient,
+) -> None:
+    response = unauthenticated_client.post(
+        f"{settings.API_V1_STR}/labware/1/barcode",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {"detail": "Not authenticated"}

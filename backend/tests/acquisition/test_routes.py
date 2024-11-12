@@ -1,4 +1,3 @@
-from datetime import timedelta
 from unittest.mock import patch
 
 from fastapi import status
@@ -168,12 +167,12 @@ def test_create_plan_requires_authentication(
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_delete_plan_by_name_requires_authentication(
+def test_delete_plan_requires_authentication(
     unauthenticated_client: TestClient, db: Session
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     response = unauthenticated_client.delete(
-        f"{settings.API_V1_STR}/acquisition/plans/{plan.name}",
+        f"{settings.API_V1_STR}/acquisition/plans/{plan.id}",
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

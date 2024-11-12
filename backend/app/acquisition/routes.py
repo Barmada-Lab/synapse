@@ -71,7 +71,6 @@ def delete_acquisition_plan(session: SessionDep, id: int) -> Response:
 @api_router.patch(
     "/reads/{id}",
     response_model=PlatereadSpecRecord,
-    dependencies=[CurrentActiveUserDep],
 )
 def update_plateread(
     session: SessionDep, id: int, plateread_in: PlatereadSpecUpdate

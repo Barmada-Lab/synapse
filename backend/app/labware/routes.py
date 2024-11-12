@@ -15,11 +15,11 @@ from .models import (
 )
 from .utils import emit_wellplate_location_update
 
-api_router = APIRouter()
+api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
 
-@api_router.get("/", response_model=WellplateList, dependencies=[CurrentActiveUserDep])
-def read_wellplates(
+@api_router.get("/", response_model=WellplateList)
+def list_wellplates(
     session: SessionDep, skip: int = 0, limit: int = 100, name: str | None = None
 ) -> WellplateList:
     count_statement = select(func.count()).select_from(Wellplate)
@@ -38,7 +38,6 @@ def read_wellplates(
 @api_router.post(
     "/",
     response_model=WellplateRecord,
-    dependencies=[CurrentActiveUserDep],
     status_code=status.HTTP_201_CREATED,
 )
 def create_wellplate(
@@ -56,7 +55,6 @@ def create_wellplate(
 @api_router.patch(
     "/{wellplate_id}",
     response_model=WellplateRecord,
-    dependencies=[CurrentActiveUserDep],
 )
 def update_wellplate_location(
     session: SessionDep,
@@ -81,7 +79,6 @@ def update_wellplate_location(
 @api_router.post(
     "/{wellplate_id}/barcode",
     response_model=None,
-    dependencies=[CurrentActiveUserDep],
 )
 def print_barcode(session: SessionDep, wellplate_id: int) -> Response:
     if (wellplate := session.get(Wellplate, wellplate_id)) is None:
