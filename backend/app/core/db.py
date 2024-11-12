@@ -13,13 +13,24 @@ engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
 
 def init_db(session: Session) -> None:
-    user = session.exec(
+    super_user = session.exec(
         select(User).where(User.email == settings.FIRST_SUPERUSER)
     ).first()
-    if not user:
+    if not super_user:
         user_in = UserCreate(
             email=settings.FIRST_SUPERUSER,
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
         )
-        user = crud.create_user(session=session, user_create=user_in)
+        super_user = crud.create_user(session=session, user_create=user_in)
+
+    overlord_user = session.exec(
+        select(User).where(User.email == settings.OVERLORD_USER)
+    ).first()
+    if not overlord_user:
+        user_in = UserCreate(
+            email=settings.OVERLORD_USER,
+            password=settings.OVERLORD_PASSWORD,
+            is_superuser=True,
+        )
+        overlord_user = crud.create_user(session=session, user_create=user_in)
