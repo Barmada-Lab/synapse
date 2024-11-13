@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
 from tests.users.utils import authentication_token_from_email
-from tests.utils import get_superuser_token_headers, get_superuser_api_key_headers
+from tests.utils import get_superuser_api_key_headers, get_superuser_token_headers
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -40,6 +40,7 @@ def normal_user_token_headers(client: TestClient, db: Session) -> dict[str, str]
     return authentication_token_from_email(
         client=client, email=settings.EMAIL_TEST_USER, db=db
     )
+
 
 @pytest.fixture(scope="session")
 def superuser_api_key_headers(client: TestClient):

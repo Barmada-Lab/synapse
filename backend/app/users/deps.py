@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
@@ -10,8 +10,7 @@ from app.core import security
 from app.core.config import settings
 from app.core.deps import SessionDep
 
-from . import crud
-from .models import TokenPayload, User
+from .models import Application, TokenPayload, User
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token", auto_error=False
@@ -39,17 +38,26 @@ def check_oauth_bearer(session: SessionDep, token: PWBearerDep) -> User | None:
     return user
 
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 APIKeyDep = Annotated[str, Depends(api_key_header)]
 
 
-def check_api_key(session: SessionDep, api_key: APIKeyDep) -> User | None:
-    if not api_key:
+def check_api_key(
+    session: SessionDep, api_key: APIKeyDep, x_api_id: str | None = Header(default=None)
+) -> User | None:
+    if not api_key or not x_api_id:
         return None
 
-    application = crud.get_application_by_key(session=session, key=api_key)
+    application = session.get(Application, x_api_id)
     if not application:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API Key not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="API Key not found"
+        )
+    elif not security.verify_secret(api_key, application.hashed_key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
+        )
     return application.user
 
 
@@ -75,6 +83,7 @@ def check_oauth_or_api_key(
 
 CurrentUserDep = Depends(check_oauth_or_api_key)
 CurrentUser = Annotated[User, CurrentUserDep]
+
 
 def get_current_active_user(current_user: CurrentUser) -> User:
     if not current_user.is_active:

@@ -6,6 +6,7 @@ from .models import Location, Wellplate
 
 WELLPLATE_RESOURCE_REGEX = r"^wellplate\.(?P<wellplate_name>\w+)$"
 
+
 def emit_wellplate_location_update(*, wellplate: Wellplate, before: Location) -> None:
     if wellplate.location == before:
         return

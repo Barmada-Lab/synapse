@@ -115,22 +115,64 @@ class OverlordBatchParams:
     def to_parameter_collection(self) -> ParameterCollection:
         return ParameterCollection(
             items=[
-                OverlordParameter(name="READ_INDEX", type="Numeric", value=str(self.read_index)),
-                OverlordParameter(name="READ_TOTAL", type="Numeric", value=str(self.read_total)),
-                OverlordParameter(name="USER_FIRST_NAME", type="Text", value=self.user_first_name),
-                OverlordParameter(name="USER_LAST_NAME", type="Text", value=self.user_last_name),
-                OverlordParameter(name="USER_EMAIL", type="Text", value=self.user_email),
+                OverlordParameter(
+                    name="READ_INDEX", type="Numeric", value=str(self.read_index)
+                ),
+                OverlordParameter(
+                    name="READ_TOTAL", type="Numeric", value=str(self.read_total)
+                ),
+                OverlordParameter(
+                    name="USER_FIRST_NAME", type="Text", value=self.user_first_name
+                ),
+                OverlordParameter(
+                    name="USER_LAST_NAME", type="Text", value=self.user_last_name
+                ),
+                OverlordParameter(
+                    name="USER_EMAIL", type="Text", value=self.user_email
+                ),
                 OverlordParameter(name="USER_DATA", type="Text", value=self.user_data),
-                OverlordParameter(name="BATCH_NAME", type="Text", value=self.batch_name),
-                OverlordParameter(name="EXPERIMENT_NAME", type="Text", value=self.experiment_name),
-                OverlordParameter(name="LABWARE_TYPE", type="Text", value=self.labware_type),
-                OverlordParameter(name="PLATE_TOTAL", type="Numeric", value=str(self.plate_total)),
-                OverlordParameter(name="PLATE_LOCATION_START", type="Text", value=self.plate_location_start),
-                OverlordParameter(name="SCANS_PER_PLATE", type="Numeric", value=str(self.scans_per_plate)),
-                OverlordParameter(name="SCAN_TIME_INTERVAL", type="Numeric", value=str(self.scan_time_interval)),
-                OverlordParameter(name="PROTOCOL_NAME", type="Text", value=self.protocol_name),
-                OverlordParameter(name="OUTPUT_DIRECTORY", type="Text", value=self.output_directory),
-                OverlordParameter(name="READ_BARCODES", type="TrueFalse", value="True" if self.read_barcodes else "False"),
-                OverlordParameter(name="PLATE_ESTIMATED_TIME", type="Numeric", value=str(self.plate_estimated_time)),
+                OverlordParameter(
+                    name="BATCH_NAME", type="Text", value=self.batch_name
+                ),
+                OverlordParameter(
+                    name="EXPERIMENT_NAME", type="Text", value=self.experiment_name
+                ),
+                OverlordParameter(
+                    name="LABWARE_TYPE", type="Text", value=self.labware_type
+                ),
+                OverlordParameter(
+                    name="PLATE_TOTAL", type="Numeric", value=str(self.plate_total)
+                ),
+                OverlordParameter(
+                    name="PLATE_LOCATION_START",
+                    type="Text",
+                    value=self.plate_location_start,
+                ),
+                OverlordParameter(
+                    name="SCANS_PER_PLATE",
+                    type="Numeric",
+                    value=str(self.scans_per_plate),
+                ),
+                OverlordParameter(
+                    name="SCAN_TIME_INTERVAL",
+                    type="Numeric",
+                    value=str(self.scan_time_interval),
+                ),
+                OverlordParameter(
+                    name="PROTOCOL_NAME", type="Text", value=self.protocol_name
+                ),
+                OverlordParameter(
+                    name="OUTPUT_DIRECTORY", type="Text", value=self.output_directory
+                ),
+                OverlordParameter(
+                    name="READ_BARCODES",
+                    type="TrueFalse",
+                    value="True" if self.read_barcodes else "False",
+                ),
+                OverlordParameter(
+                    name="PLATE_ESTIMATED_TIME",
+                    type="Numeric",
+                    value=str(self.plate_estimated_time),
+                ),
             ]
         )

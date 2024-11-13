@@ -23,19 +23,16 @@ def test_create_wellplate(db: Session) -> None:
     assert well_plate.plate_type == well_plate_in.plate_type
 
 
-def test_create_wellplate_empty_name(db: Session) -> None:
+def test_create_wellplate_empty_name() -> None:
     name = ""
     with pytest.raises(ValidationError):
-        _ = WellplateCreate(
-            name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
-        )
+        _ = WellplateCreate(name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96)
 
-def test_create_wellplate_long_name(db: Session):
+
+def test_create_wellplate_long_name():
     name = random_lower_string(10)
     with pytest.raises(ValidationError):
-        _ = WellplateCreate(
-            name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96
-        )
+        _ = WellplateCreate(name=name, plate_type=WellplateType.REVVITY_PHENOPLATE_96)
 
 
 def test_update_wellplate(db: Session) -> None:

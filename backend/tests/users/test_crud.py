@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import pytest
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import IntegrityError
@@ -112,7 +110,9 @@ def test_update_user(db: Session) -> None:
 def test_create_application(db: Session) -> None:
     user = create_random_user(session=db)
     app_create = ApplicationCreate(name=random_lower_string())
-    app_key = crud.create_application(session=db, user=user, application_create=app_create)
+    app_key = crud.create_application(
+        session=db, user=user, application_create=app_create
+    )
     app = db.get(Application, app_key.id)
     assert app is not None
     assert verify_secret(app_key.key, app.hashed_key)
@@ -121,7 +121,9 @@ def test_create_application(db: Session) -> None:
 def test_delete_application(db: Session) -> None:
     user = create_random_user(session=db)
     app_create = ApplicationCreate(name=random_lower_string())
-    app_key = crud.create_application(session=db, user=user, application_create=app_create)
+    app_key = crud.create_application(
+        session=db, user=user, application_create=app_create
+    )
     app = db.get(Application, app_key.id)
     assert app is not None
     db.delete(app)
@@ -132,7 +134,9 @@ def test_delete_application(db: Session) -> None:
 def test_delete_user_app_cascade(db: Session) -> None:
     user = create_random_user(session=db)
     app_create = ApplicationCreate(name=random_lower_string())
-    app_key = crud.create_application(session=db, user=user, application_create=app_create)
+    app_key = crud.create_application(
+        session=db, user=user, application_create=app_create
+    )
     app = db.get(Application, app_key.id)
     assert app is not None
     db.delete(user)

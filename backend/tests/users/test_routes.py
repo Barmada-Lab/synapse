@@ -425,9 +425,7 @@ def test_delete_user_me_as_superuser(
     assert response["detail"] == "Super users are not allowed to delete themselves"
 
 
-def test_create_application(
-    pw_authenticated_client: TestClient, db: Session
-) -> None:
+def test_create_application(pw_authenticated_client: TestClient, db: Session) -> None:
     data = {
         "name": "Test Application",
         "description": "Test Description",
@@ -444,9 +442,7 @@ def test_create_application(
     assert app_db
 
 
-def test_retrieve_applications(
-    pw_authenticated_client: TestClient
-) -> None:
+def test_retrieve_applications(pw_authenticated_client: TestClient) -> None:
     data = {
         "name": "Test Application",
         "description": "Test Description",
@@ -461,9 +457,7 @@ def test_retrieve_applications(
     assert len(applications["data"]) > 0
 
 
-def test_delete_application(
-    pw_authenticated_client: TestClient, db: Session
-) -> None:
+def test_delete_application(pw_authenticated_client: TestClient, db: Session) -> None:
     data = {
         "name": "Test Application",
         "description": "Test Description",
@@ -639,3 +633,8 @@ def test_recovery_password_user_not_exits(
 #     assert "detail" in response
 #     assert r.status_code == 400
 #     assert response["detail"] == "Invalid token"
+
+
+def test_key_based_auth(key_authenticated_client: TestClient) -> None:
+    r = key_authenticated_client.get(f"{settings.API_V1_STR}/users/me")
+    assert r.status_code == 200

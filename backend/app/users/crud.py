@@ -63,10 +63,3 @@ def create_application(
     session.commit()
     session.refresh(db_app)
     return ApplicationKey.model_validate(db_app, update={"key": key})
-
-
-def get_application_by_key(*, session: Session, key: str) -> Application | None:
-    hashed_key = get_secret_hash(key)
-    statement = select(Application).where(Application.hashed_key == hashed_key)
-    db_app = session.exec(statement).first()
-    return db_app

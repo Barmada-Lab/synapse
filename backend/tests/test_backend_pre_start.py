@@ -8,7 +8,10 @@ def test_init_successful_connection() -> None:
     session_mock = MagicMock()
 
     with (
-        patch("app.core.scripts.backend_pre_start.Session.__enter__", return_value=session_mock),
+        patch(
+            "app.core.scripts.backend_pre_start.Session.__enter__",
+            return_value=session_mock,
+        ),
         patch("app.core.scripts.backend_pre_start.select") as select_mock,
     ):
         try:

@@ -53,7 +53,9 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         default=ImagingPriority.NORMAL,
     )
 
-    schedule: list["PlatereadSpec"] = Relationship(back_populates="acquisition_plan", cascade_delete=True)
+    schedule: list["PlatereadSpec"] = Relationship(
+        back_populates="acquisition_plan", cascade_delete=True
+    )
 
     # using Optional["AcquisitionArtifact"] because declaring
     # "AcquisitionArtifact" | None results in a TypeError
@@ -93,7 +95,9 @@ class PlatereadSpecBase(SQLModel):
 class PlatereadSpec(PlatereadSpecBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    acquisition_plan_id: int = Field(foreign_key="acquisitionplan.id", ondelete="CASCADE")
+    acquisition_plan_id: int = Field(
+        foreign_key="acquisitionplan.id", ondelete="CASCADE"
+    )
     acquisition_plan: AcquisitionPlan = Relationship(back_populates="schedule")
 
 

@@ -43,6 +43,14 @@ def get_superuser_token_headers(client: TestClient) -> dict[str, str]:
 def get_superuser_api_key_headers(client: TestClient) -> dict[str, str]:
     token_headers = get_superuser_token_headers(client)
     application_create = {"name": random_lower_string()}
-    response = client.post(headers=token_headers, url=f"{settings.API_V1_STR}/users/me/application", json=application_create)
+    response = client.post(
+        headers=token_headers,
+        url=f"{settings.API_V1_STR}/users/me/applications",
+        json=application_create,
+    )
+    api_id = response.json()["id"]
     api_key = response.json()["key"]
-    return {"X-API-Key": api_key}
+    return {
+        "x-api-id": api_id,
+        "x-api-key": api_key
+    }
