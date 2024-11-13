@@ -11,14 +11,14 @@ from tests.labware.utils import create_random_wellplate
 from tests.utils import random_lower_string
 
 
-def test_retrieve_wellplates(authenticated_client: TestClient, db: Session) -> None:
+def test_retrieve_wellplates(pw_authenticated_client: TestClient, db: Session) -> None:
     # create a wellplate
     name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     crud.create_wellplate(session=db, wellplate_create=wellplate_in)
 
-    response = authenticated_client.get(f"{settings.API_V1_STR}/labware/")
+    response = pw_authenticated_client.get(f"{settings.API_V1_STR}/labware/")
     assert response.status_code == status.HTTP_200_OK
     all_wellplates = response.json()
 
@@ -27,9 +27,9 @@ def test_retrieve_wellplates(authenticated_client: TestClient, db: Session) -> N
         WellplateRecord.model_validate(item)
 
 
-def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> None:
+def test_get_wellplate_by_name_not_found(pw_authenticated_client: TestClient) -> None:
     name = random_lower_string(9)
-    response = authenticated_client.get(
+    response = pw_authenticated_client.get(
         f"{settings.API_V1_STR}/labware", params={"name": name}
     )
     assert response.status_code == status.HTTP_200_OK
@@ -37,11 +37,11 @@ def test_get_wellplate_by_name_not_found(authenticated_client: TestClient) -> No
     assert response.json()["data"] == []
 
 
-def test_create_wellplate(authenticated_client: TestClient, db: Session) -> None:
+def test_create_wellplate(pw_authenticated_client: TestClient, db: Session) -> None:
     name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96.value
 
-    response = authenticated_client.post(
+    response = pw_authenticated_client.post(
         f"{settings.API_V1_STR}/labware/",
         json={"name": name, "plate_type": plate_type},
     )
@@ -58,18 +58,18 @@ def test_create_wellplate(authenticated_client: TestClient, db: Session) -> None
     assert wellplate.plate_type == WellplateType.REVVITY_PHENOPLATE_96
 
 
-def test_create_wellplate_empty_name(authenticated_client: TestClient) -> None:
+def test_create_wellplate_empty_name(pw_authenticated_client: TestClient) -> None:
     name = ""
-    response = authenticated_client.post(
+    response = pw_authenticated_client.post(
         f"{settings.API_V1_STR}/labware/",
         json={"name": name, "plate_type": WellplateType.REVVITY_PHENOPLATE_96.value},
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-def test_create_wellplate_long_name(authenticated_client: TestClient) -> None:
+def test_create_wellplate_long_name(pw_authenticated_client: TestClient) -> None:
     name = random_lower_string(10)
-    response = authenticated_client.post(
+    response = pw_authenticated_client.post(
         f"{settings.API_V1_STR}/labware/",
         json={"name": name, "plate_type": WellplateType.REVVITY_PHENOPLATE_96.value},
     )
@@ -77,14 +77,14 @@ def test_create_wellplate_long_name(authenticated_client: TestClient) -> None:
 
 
 def test_create_wellplate_duplicate_fails(
-    authenticated_client: TestClient, db: Session
+    pw_authenticated_client: TestClient, db: Session
 ) -> None:
     name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     crud.create_wellplate(session=db, wellplate_create=wellplate_in)
 
-    response = authenticated_client.post(
+    response = pw_authenticated_client.post(
         f"{settings.API_V1_STR}/labware/",
         json={"name": name, "plate_type": plate_type.value},
     )
@@ -92,14 +92,14 @@ def test_create_wellplate_duplicate_fails(
     assert response.json() == {"detail": "A wellplate with this name already exists."}
 
 
-def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None:
+def test_update_wellplate(pw_authenticated_client: TestClient, db: Session) -> None:
     name = random_lower_string(9)
     plate_type = WellplateType.REVVITY_PHENOPLATE_96
     wellplate_in = WellplateCreate(name=name, plate_type=plate_type)
     wellplate = crud.create_wellplate(session=db, wellplate_create=wellplate_in)
 
     location = Location.CQ1
-    response = authenticated_client.patch(
+    response = pw_authenticated_client.patch(
         f"{settings.API_V1_STR}/labware/{wellplate.id}",
         json={"location": location.value},
     )
@@ -112,9 +112,9 @@ def test_update_wellplate(authenticated_client: TestClient, db: Session) -> None
     assert wellplate.location == location
 
 
-def test_update_wellplate_not_found(authenticated_client: TestClient) -> None:
+def test_update_wellplate_not_found(pw_authenticated_client: TestClient) -> None:
     location = Location.CQ1
-    response = authenticated_client.patch(
+    response = pw_authenticated_client.patch(
         f"{settings.API_V1_STR}/labware/{2**16}",
         json={"location": location.value},
     )
@@ -123,11 +123,11 @@ def test_update_wellplate_not_found(authenticated_client: TestClient) -> None:
 
 
 def test_update_wellplate_emit_event(
-    authenticated_client: TestClient, db: Session
+    pw_authenticated_client: TestClient, db: Session
 ) -> None:
     wellplate_in = create_random_wellplate(session=db)
     with patch("app.labware.utils.emit_event") as mock_emit_event:
-        authenticated_client.patch(
+        pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
             json={"location": Location.CQ1.value},
         )
@@ -142,11 +142,11 @@ def test_update_wellplate_emit_event(
 
 
 def test_update_wellplate_no_change_doesnt_emit_event(
-    authenticated_client: TestClient, db: Session
+    pw_authenticated_client: TestClient, db: Session
 ) -> None:
     wellplate_in = create_random_wellplate(session=db)
     with patch("app.labware.utils.emit_event") as mock_emit_event:
-        authenticated_client.patch(
+        pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
             json={"location": Location.EXTERNAL.value},
         )

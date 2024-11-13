@@ -5,9 +5,9 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.core.security import verify_password
+from app.core.security import verify_secret
 from app.users import crud
-from app.users.models import User, UserCreate
+from app.users.models import Application, User, UserCreate
 from tests.utils import random_email, random_lower_string
 
 
@@ -212,7 +212,7 @@ def test_update_password_me(
     user_db = db.exec(user_query).first()
     assert user_db
     assert user_db.email == settings.FIRST_SUPERUSER
-    assert verify_password(new_password, user_db.hashed_password)
+    assert verify_secret(new_password, user_db.hashed_password)
 
     # Revert to the old password to keep consistency in test
     old_data = {
@@ -227,7 +227,7 @@ def test_update_password_me(
     db.refresh(user_db)
 
     assert r.status_code == 200
-    assert verify_password(settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password)
+    assert verify_secret(settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password)
 
 
 def test_update_password_me_incorrect_password(
@@ -425,6 +425,66 @@ def test_delete_user_me_as_superuser(
     assert response["detail"] == "Super users are not allowed to delete themselves"
 
 
+def test_create_application(
+    pw_authenticated_client: TestClient, db: Session
+) -> None:
+    data = {
+        "name": "Test Application",
+        "description": "Test Description",
+    }
+    r = pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/users/me/applications",
+        json=data,
+    )
+    assert r.status_code == 200
+    created_application = r.json()
+    assert created_application["key"]
+
+    app_db = db.get(Application, created_application["id"])
+    assert app_db
+
+
+def test_retrieve_applications(
+    pw_authenticated_client: TestClient
+) -> None:
+    data = {
+        "name": "Test Application",
+        "description": "Test Description",
+    }
+    pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/users/me/applications",
+        json=data,
+    )
+    r = pw_authenticated_client.get(f"{settings.API_V1_STR}/users/me/applications")
+    assert r.status_code == 200
+    applications = r.json()
+    assert len(applications["data"]) > 0
+
+
+def test_delete_application(
+    pw_authenticated_client: TestClient, db: Session
+) -> None:
+    data = {
+        "name": "Test Application",
+        "description": "Test Description",
+    }
+    r = pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/users/me/applications",
+        json=data,
+    )
+    created_application = r.json()
+
+    r = pw_authenticated_client.delete(
+        f"{settings.API_V1_STR}/users/me/applications/{created_application['id']}",
+    )
+    assert r.status_code == 200
+    deleted_application = r.json()
+    assert deleted_application["message"] == "Application deleted successfully"
+
+    application_db = db.get(Application, created_application["id"])
+    assert application_db is None
+
+
 def test_delete_user_super_user(
     client: TestClient, superuser_token_headers: dict[str, str], db: Session
 ) -> None:
@@ -484,3 +544,98 @@ def test_delete_user_without_privileges(
     )
     assert r.status_code == 403
     assert r.json()["detail"] == "The user doesn't have enough privileges"
+
+
+def test_get_access_token(client: TestClient) -> None:
+    login_data = {
+        "username": settings.FIRST_SUPERUSER,
+        "password": settings.FIRST_SUPERUSER_PASSWORD,
+    }
+    r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
+    tokens = r.json()
+    assert r.status_code == 200
+    assert "access_token" in tokens
+    assert tokens["access_token"]
+
+
+def test_get_access_token_incorrect_password(client: TestClient) -> None:
+    login_data = {
+        "username": settings.FIRST_SUPERUSER,
+        "password": "incorrect",
+    }
+    r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
+    assert r.status_code == 400
+
+
+def test_use_access_token(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    r = client.post(
+        f"{settings.API_V1_STR}/login/test-token",
+        headers=superuser_token_headers,
+    )
+    result = r.json()
+    assert r.status_code == 200
+    assert "email" in result
+
+
+# def test_recovery_password(
+#     client: TestClient, normal_user_token_headers: dict[str, str]
+# ) -> None:
+#     with (
+#         patch("app.core.config.settings.SMTP_HOST", "smtp.example.com"),
+#         patch("app.core.config.settings.SMTP_USER", "admin@example.com"),
+#     ):
+#         email = "test@example.com"
+#         r = client.post(
+#             f"{settings.API_V1_STR}/password-recovery/{email}",
+#             headers=normal_user_token_headers,
+#         )
+#         assert r.status_code == 200
+#         assert r.json() == {"message": "Password recovery email sent"}
+
+
+def test_recovery_password_user_not_exits(
+    client: TestClient, normal_user_token_headers: dict[str, str]
+) -> None:
+    email = "jVgQr@example.com"
+    r = client.post(
+        f"{settings.API_V1_STR}/password-recovery/{email}",
+        headers=normal_user_token_headers,
+    )
+    assert r.status_code == 404
+
+
+# def test_reset_password(
+#     client: TestClient, superuser_token_headers: dict[str, str], db: Session
+# ) -> None:
+#     token = generate_password_reset_token(email=settings.FIRST_SUPERUSER)
+#     data = {"new_password": "changethis", "token": token}
+#     r = client.post(
+#         f"{settings.API_V1_STR}/reset-password/",
+#         headers=superuser_token_headers,
+#         json=data,
+#     )
+#     assert r.status_code == 200
+#     assert r.json() == {"message": "Password updated successfully"}
+
+#     user_query = select(User).where(User.email == settings.FIRST_SUPERUSER)
+#     user = db.exec(user_query).first()
+#     assert user
+#     assert verify_password(data["new_password"], user.hashed_password)
+
+
+# def test_reset_password_invalid_token(
+#     client: TestClient, superuser_token_headers: dict[str, str]
+# ) -> None:
+#     data = {"new_password": "changethis", "token": "invalid"}
+#     r = client.post(
+#         f"{settings.API_V1_STR}/reset-password/",
+#         headers=superuser_token_headers,
+#         json=data,
+#     )
+#     response = r.json()
+
+#     assert "detail" in response
+#     assert r.status_code == 400
+#     assert response["detail"] == "Invalid token"

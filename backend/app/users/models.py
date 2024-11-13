@@ -1,7 +1,7 @@
 import uuid
 
 from pydantic import EmailStr
-from sqlmodel import Field, SQLModel  # , Relationship
+from sqlmodel import Field, SQLModel, Relationship
 
 
 # Shared properties
@@ -43,6 +43,9 @@ class UpdatePassword(SQLModel):
 class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
+    applications: list["Application"] = Relationship(
+        back_populates="user", cascade_delete=True
+    )
 
 
 # Properties to return via API, id is always required
@@ -74,3 +77,28 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=40)
+
+
+class ApplicationRecord(SQLModel):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(max_length=255)
+    description: str | None = Field(default=None, max_length=1024)
+
+
+class Application(ApplicationRecord, table=True):
+    hashed_key: str = Field(index=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE")
+    user: User = Relationship(back_populates="applications")
+
+
+class ListApplications(SQLModel):
+    data: list[ApplicationRecord]
+
+
+class ApplicationCreate(SQLModel):
+    name: str
+    description: str | None = None
+
+
+class ApplicationKey(ApplicationRecord):
+    key: str

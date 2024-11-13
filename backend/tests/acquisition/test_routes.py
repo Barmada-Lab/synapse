@@ -16,10 +16,10 @@ from tests.labware.utils import create_random_wellplate
 from tests.utils import random_lower_string
 
 
-def test_list_plans(authenticated_client: TestClient, db: Session) -> None:
+def test_list_plans(pw_authenticated_client: TestClient, db: Session) -> None:
     _ = create_random_acquisition_plan(session=db)
 
-    response = authenticated_client.get(f"{settings.API_V1_STR}/acquisition/plans/")
+    response = pw_authenticated_client.get(f"{settings.API_V1_STR}/acquisition/plans/")
     assert response.status_code == status.HTTP_200_OK
     all_plans = response.json()
 
@@ -28,9 +28,9 @@ def test_list_plans(authenticated_client: TestClient, db: Session) -> None:
         AcquisitionPlanRecord.model_validate(item)
 
 
-def test_query_plan_by_name(authenticated_client: TestClient, db: Session) -> None:
+def test_query_plan_by_name(pw_authenticated_client: TestClient, db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
-    response = authenticated_client.get(
+    response = pw_authenticated_client.get(
         f"{settings.API_V1_STR}/acquisition/plans",
         params={"name": plan.name},
     )
@@ -41,8 +41,8 @@ def test_query_plan_by_name(authenticated_client: TestClient, db: Session) -> No
     assert data[0]["name"] == plan.name
 
 
-def test_get_plan_by_name_not_found(authenticated_client: TestClient) -> None:
-    response = authenticated_client.get(
+def test_get_plan_by_name_not_found(pw_authenticated_client: TestClient) -> None:
+    response = pw_authenticated_client.get(
         f"{settings.API_V1_STR}/acquisition/plans/",
         params={"name": random_lower_string()},
     )
@@ -51,7 +51,7 @@ def test_get_plan_by_name_not_found(authenticated_client: TestClient) -> None:
     assert response.json()["data"] == []
 
 
-def test_create_plan(authenticated_client: TestClient, db: Session) -> None:
+def test_create_plan(pw_authenticated_client: TestClient, db: Session) -> None:
     wellplate = create_random_wellplate(session=db)
     json = AcquisitionPlanCreate(
         name=random_lower_string(),
@@ -60,7 +60,7 @@ def test_create_plan(authenticated_client: TestClient, db: Session) -> None:
         protocol_name=random_lower_string(),
         n_reads=1,
     ).model_dump(mode="json")
-    response = authenticated_client.post(
+    response = pw_authenticated_client.post(
         f"{settings.API_V1_STR}/acquisition/plans/",
         json=json,
     )
@@ -73,10 +73,10 @@ def test_create_plan(authenticated_client: TestClient, db: Session) -> None:
 
 
 def test_create_plan_duplicate_returns_400(
-    authenticated_client: TestClient, db: Session
+    pw_authenticated_client: TestClient, db: Session
 ) -> None:
     plan_a = create_random_acquisition_plan(session=db)
-    response = authenticated_client.post(
+    response = pw_authenticated_client.post(
         f"{settings.API_V1_STR}/acquisition/plans/",
         json=plan_a.model_dump(mode="json"),
     )
@@ -84,9 +84,9 @@ def test_create_plan_duplicate_returns_400(
     assert response.json()["detail"] == "A plan with this name already exists."
 
 
-def test_delete_plan_by_id(authenticated_client: TestClient, db: Session) -> None:
+def test_delete_plan_by_id(pw_authenticated_client: TestClient, db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
-    response = authenticated_client.delete(
+    response = pw_authenticated_client.delete(
         f"{settings.API_V1_STR}/acquisition/plans/{plan.id}",
     )
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -95,8 +95,8 @@ def test_delete_plan_by_id(authenticated_client: TestClient, db: Session) -> Non
     assert get_acquisition_plan_by_name(session=db, name=plan.name) is None
 
 
-def test_delete_plan_by_id_not_found(authenticated_client: TestClient) -> None:
-    response = authenticated_client.delete(
+def test_delete_plan_by_id_not_found(pw_authenticated_client: TestClient) -> None:
+    response = pw_authenticated_client.delete(
         f"{settings.API_V1_STR}/acquisition/plans/{2**16}",
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -104,13 +104,13 @@ def test_delete_plan_by_id_not_found(authenticated_client: TestClient) -> None:
 
 
 def test_update_plateread_emit_event(
-    authenticated_client: TestClient, db: Session
+    pw_authenticated_client: TestClient, db: Session
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
     with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
-        response = authenticated_client.patch(
+        response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/acquisition/reads/{read.id}",
             json={"status": "RUNNING"},
         )
@@ -119,8 +119,8 @@ def test_update_plateread_emit_event(
         mock.assert_called_once()
 
 
-def test_update_plateread_not_found(authenticated_client: TestClient) -> None:
-    response = authenticated_client.patch(
+def test_update_plateread_not_found(pw_authenticated_client: TestClient) -> None:
+    response = pw_authenticated_client.patch(
         f"{settings.API_V1_STR}/acquisition/reads/{2**16}",
         json={"status": "RUNNING"},
     )
@@ -129,13 +129,13 @@ def test_update_plateread_not_found(authenticated_client: TestClient) -> None:
 
 
 def test_update_plateread_no_change(
-    authenticated_client: TestClient, db: Session
+    pw_authenticated_client: TestClient, db: Session
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
     with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
-        response = authenticated_client.patch(
+        response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/acquisition/reads/{read.id}",
             json={"status": read.status.value},
         )

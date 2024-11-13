@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -19,9 +20,13 @@ def create_access_token(subject: str | Any, expires_delta: timedelta) -> str:
     return encoded_jwt
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_secret(plain_secret: str, hashed_secret: str) -> bool:
+    return pwd_context.verify(plain_secret, hashed_secret)
 
 
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+def get_secret_hash(secret: str) -> str:
+    return pwd_context.hash(secret)
+
+
+def create_api_key() -> str:
+    return secrets.token_urlsafe(128)

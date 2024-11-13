@@ -1,10 +1,20 @@
+from uuid import uuid4
+
+import pytest
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from app.core.security import verify_password
+from app.core.security import verify_secret
 from app.users import crud
-from app.users.models import User, UserCreate, UserUpdate
-from tests.utils import random_email, random_lower_string
+from app.users.models import (
+    Application,
+    ApplicationCreate,
+    User,
+    UserCreate,
+    UserUpdate,
+)
+from tests.utils import create_random_user, random_email, random_lower_string
 
 
 def test_create_user(db: Session) -> None:
@@ -14,6 +24,14 @@ def test_create_user(db: Session) -> None:
     user = crud.create_user(session=db, user_create=user_in)
     assert user.email == email
     assert hasattr(user, "hashed_password")
+
+
+def test_create_user_already_exists(db: Session) -> None:
+    user = create_random_user(session=db)
+    user_in = UserCreate(email=user.email, password=random_lower_string())
+    with pytest.raises(IntegrityError):
+        crud.create_user(session=db, user_create=user_in)
+    db.rollback()
 
 
 def test_authenticate_user(db: Session) -> None:
@@ -88,4 +106,36 @@ def test_update_user(db: Session) -> None:
     user_2 = db.get(User, user.id)
     assert user_2
     assert user.email == user_2.email
-    assert verify_password(new_password, user_2.hashed_password)
+    assert verify_secret(new_password, user_2.hashed_password)
+
+
+def test_create_application(db: Session) -> None:
+    user = create_random_user(session=db)
+    app_create = ApplicationCreate(name=random_lower_string())
+    app_key = crud.create_application(session=db, user=user, application_create=app_create)
+    app = db.get(Application, app_key.id)
+    assert app is not None
+    assert verify_secret(app_key.key, app.hashed_key)
+
+
+def test_delete_application(db: Session) -> None:
+    user = create_random_user(session=db)
+    app_create = ApplicationCreate(name=random_lower_string())
+    app_key = crud.create_application(session=db, user=user, application_create=app_create)
+    app = db.get(Application, app_key.id)
+    assert app is not None
+    db.delete(app)
+    db.commit()
+    assert db.get(Application, app.id) is None
+
+
+def test_delete_user_app_cascade(db: Session) -> None:
+    user = create_random_user(session=db)
+    app_create = ApplicationCreate(name=random_lower_string())
+    app_key = crud.create_application(session=db, user=user, application_create=app_create)
+    app = db.get(Application, app_key.id)
+    assert app is not None
+    db.delete(user)
+    db.commit()
+    assert db.get(User, user.id) is None
+    assert db.get(Application, app.id) is None
