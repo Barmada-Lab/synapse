@@ -139,7 +139,7 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
             plate_estimated_time=7200,
         ).to_parameter_collection()
 
-        with batch_path.open("w") as f:
+        with batch_path.open("wb") as f:
             f.write(batch.to_xml())  # type: ignore
 
 
