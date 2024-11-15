@@ -50,15 +50,15 @@ class LifoStack(BaseXmlModel):
 
 
 class ParameterCollection(BaseXmlModel, tag="Parameters"):
-    items: list[OverlordParameter] = element(tag="Parameter")
+    items: list[OverlordParameter] = element(tag="Parameter", default_factory=list)
 
 
 class ReadTimeCollection(BaseXmlModel, tag="ReadTimes"):
-    items: list[ReadTime] = element(tag="ReadTime")
+    items: list[ReadTime] = element(tag="ReadTime", default_factory=list)
 
 
 class LabwareCollection(BaseXmlModel, tag="LabwareCollection"):
-    items: list[Labware] = element(tag="Labware")
+    items: list[Labware] = element(tag="Labware", default_factory=list)
 
 
 class LifoStackCollection(BaseXmlModel, tag="LifoStackCollection", skip_empty=True):
@@ -66,34 +66,38 @@ class LifoStackCollection(BaseXmlModel, tag="LifoStackCollection", skip_empty=Tr
 
 
 class Batch(BaseXmlModel):
-    created: OverlordDatetime = element(tag="Created")
+
+    created: OverlordDatetime = element(tag="Created", default_factory=datetime.now)
     start_after: OverlordDatetime = element(tag="StartAfter")
-    added: OverlordDatetime = element(tag="Added")
-    started: OverlordDatetime = element(tag="Started")
-    completed: OverlordDatetime = element(tag="Completed")
-    aborted: bool = element(tag="Aborted")
-    abort_allowed: bool = element(tag="AbortAllowed")
+    added: OverlordDatetime = element(tag="Added", default=datetime(1970, 1, 1))
+    started: OverlordDatetime = element(tag="Started", default=datetime(1970, 1, 1))
+    completed: OverlordDatetime = element(tag="Completed", default=datetime(1970, 1, 1))
+    aborted: bool = element(tag="Aborted", default=False)
+    abort_allowed: bool = element(tag="AbortAllowed", default=True)
     batch_name: str = element(tag="BatchName")
     parent_batch_name: str = element(tag="ParentBatchName")
-    user: str = element(tag="User")
-    user_data: str = element(tag="UserData", default="")
-    email: str = element(tag="Email")
-    run_mode: int = element(tag="RunMode")
-    batch_type: int = element(tag="BatchType")
-    load_labware: bool = element(tag="LoadLabware")
-    unload_labware: bool = element(tag="UnloadLabware")
+    user: str = element(tag="User", default="_")
+    user_data: str | None = element(tag="UserData", default=None)
+    email: str | None = element(tag="Email", default=None)
+    run_mode: int = element(tag="RunMode", default=1)
+    batch_type: int = element(tag="BatchType", default=0)
+    load_labware: bool = element(tag="LoadLabware", default=True)
+    unload_labware: bool = element(tag="UnloadLabware", default=True)
     load_message: str | None = element(tag="LoadMessage", default=None)
     unload_message: str | None = element(tag="UnloadMessage", default=None)
-    labware_estimated_duration: int = element(tag="LabwareEstimatedDuration")
+    labware_estimated_duration: int = element(tag="LabwareEstimatedDuration", default=7200)
 
-    parameters: ParameterCollection
-    read_times: ReadTimeCollection
-    labware: LabwareCollection
-    lifo_stack: LifoStackCollection
+    parameters: ParameterCollection = element(default_factory=ParameterCollection)
+    read_times: ReadTimeCollection = element(default_factory=ReadTimeCollection)
+    labware: LabwareCollection = element(default_factory=LabwareCollection)
+    lifo_stack: LifoStackCollection = element(default_factory=LifoStackCollection)
 
 
 @dataclass
 class OverlordBatchParams:
+    wellplate_id: int
+    plateread_id: int
+
     read_index: int
     read_total: int
     user_first_name: str
@@ -101,20 +105,25 @@ class OverlordBatchParams:
     user_email: str
     user_data: str
     batch_name: str
-    experiment_name: str
+    acquisition_name: str
     labware_type: str
     plate_total: int
     plate_location_start: str
     scans_per_plate: int
     scan_time_interval: int
-    protocol_name: str
-    output_directory: str
+    cq1_protocol_name: str
     read_barcodes: bool
     plate_estimated_time: int
 
     def to_parameter_collection(self) -> ParameterCollection:
         return ParameterCollection(
             items=[
+                OverlordParameter(
+                    name="WELLPLATE_ID", type="Text", value=str(self.wellplate_id)
+                ),
+                OverlordParameter(
+                    name="PLATEREAD_ID", type="Numeric", value=str(self.plateread_id)
+                ),
                 OverlordParameter(
                     name="READ_INDEX", type="Numeric", value=str(self.read_index)
                 ),
@@ -135,7 +144,7 @@ class OverlordBatchParams:
                     name="BATCH_NAME", type="Text", value=self.batch_name
                 ),
                 OverlordParameter(
-                    name="EXPERIMENT_NAME", type="Text", value=self.experiment_name
+                    name="ACQUISITION_NAME", type="Text", value=self.acquisition_name
                 ),
                 OverlordParameter(
                     name="LABWARE_TYPE", type="Text", value=self.labware_type
@@ -159,10 +168,7 @@ class OverlordBatchParams:
                     value=str(self.scan_time_interval),
                 ),
                 OverlordParameter(
-                    name="PROTOCOL_NAME", type="Text", value=self.protocol_name
-                ),
-                OverlordParameter(
-                    name="OUTPUT_DIRECTORY", type="Text", value=self.output_directory
+                    name="CQ1_PROTOCOL_NAME", type="Text", value=self.cq1_protocol_name
                 ),
                 OverlordParameter(
                     name="READ_BARCODES",

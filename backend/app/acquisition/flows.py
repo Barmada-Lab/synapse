@@ -18,7 +18,8 @@ from app.labware import crud as labware_crud
 from app.labware.utils import WELLPLATE_RESOURCE_REGEX
 
 from . import crud as acquisition_crud
-from .models import Location
+from .models import AcquisitionPlan, Location
+from .overlord_batch import Batch, OverlordBatchParams
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,48 @@ async def post_acquisition_flow(experiment_id: str):
     rmtree(experiment_path)
 
 
+@task
+def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
+    output_directory = settings.ACQUISITION_DIR / plan.name / "acquisition"
+    output_directory.mkdir(parents=True, exist_ok=True)
+
+    for i, spec in enumerate(plan.schedule):
+        parent_name = plan.name
+        batch_name = f"{plan.name}_{i}"
+        batch_path = kiosk_path / f"{plan.name}_{i}.xml"
+
+        batch = Batch(
+            start_after=spec.start_after,
+            batch_name=batch_name,
+            parent_batch_name=parent_name,
+        )
+
+        batch.parameters = OverlordBatchParams(
+            wellplate_id=plan.wellplate_id,
+            plateread_id=spec.id,  # type: ignore
+            read_index=i,
+            read_total=plan.n_reads,
+            user_first_name="",
+            user_last_name="",
+            user_email="",
+            user_data="",
+            batch_name=batch_name,
+            experiment_name=plan.name,
+            labware_type="96",
+            plate_total=1,
+            plate_location_start="C2",
+            scans_per_plate=1,
+            scan_time_interval=1440,
+            cq1_protocol_name=plan.protocol_name,
+            output_directory=output_directory,
+            read_barcodes=True,
+            plate_estimated_time=7200,
+        ).to_parameter_collection()
+
+        with batch_path.open("w") as f:
+            f.write(batch.to_xml())  # type: ignore
+
+
 @flow
 def check_to_schedule_acquisition(resource_id: str):
     if (match := re.match(WELLPLATE_RESOURCE_REGEX, resource_id)) is None:
@@ -117,10 +160,11 @@ def check_to_schedule_acquisition(resource_id: str):
         if wellplate is None:
             raise ValueError(f"Wellplate {wellplate_name} not found")
 
+        kiosk_path = settings.OVERLORD_DIR / "Batches" / "Kiosk"
         for plan in wellplate.acquisition_plans:
             if plan.storage_location == wellplate.location and plan.schedule == []:
-                acquisition_crud.schedule_plan(session=session, plan=plan)
-                # dump overlord xmls
+                plan = acquisition_crud.schedule_plan(session=session, plan=plan)
+                write_batches(plan, kiosk_path)
 
 
 def get_deployments():
