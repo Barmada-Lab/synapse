@@ -106,8 +106,6 @@ async def post_acquisition_flow(experiment_id: str):
 
 @task
 def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
-    output_directory = settings.ACQUISITION_DIR / plan.name / "acquisition"
-    output_directory.mkdir(parents=True, exist_ok=True)
 
     for i, spec in enumerate(plan.schedule):
         parent_name = plan.name
@@ -130,14 +128,13 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
             user_email="",
             user_data="",
             batch_name=batch_name,
-            experiment_name=plan.name,
+            acquisition_name=plan.name,
             labware_type="96",
             plate_total=1,
             plate_location_start="C2",
             scans_per_plate=1,
             scan_time_interval=1440,
             cq1_protocol_name=plan.protocol_name,
-            output_directory=output_directory,
             read_barcodes=True,
             plate_estimated_time=7200,
         ).to_parameter_collection()
@@ -161,6 +158,8 @@ def check_to_schedule_acquisition(resource_id: str):
             raise ValueError(f"Wellplate {wellplate_name} not found")
 
         kiosk_path = settings.OVERLORD_DIR / "Batches" / "Kiosk"
+        if not kiosk_path.exists():
+            print("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
         for plan in wellplate.acquisition_plans:
             if plan.storage_location == wellplate.location and plan.schedule == []:
                 plan = acquisition_crud.schedule_plan(session=session, plan=plan)

@@ -57,6 +57,11 @@ services:
     command: bash scripts/prestart.sh
     env_file:
       - .env
+    volumes:
+      - app-archive-data:${ARCHIVE_DIR}
+      - app-analysis-data:${ANALYSIS_DIR}
+      - app-acquisition-data:${ACQUISITION_DIR}
+      - app-overlord-data:${OVERLORD_DIR}
     environment:
       - DOMAIN=${DOMAIN}
       - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
