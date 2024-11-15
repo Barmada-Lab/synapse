@@ -5,9 +5,12 @@ from pydantic.dataclasses import dataclass
 from pydantic.functional_validators import BeforeValidator
 from pydantic_xml import BaseXmlModel, attr, element
 
+OVERLORD_STRFMT = "%Y-%m-%d_%H-%M-%S"
 
-def parse_overlord_datetime(value: str) -> datetime:
-    return datetime.strptime(value, "%Y-%m-%d_%H-%M-%S")
+def parse_overlord_datetime(value: str | datetime) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.strptime(value, OVERLORD_STRFMT)
 
 
 OverlordDatetime = Annotated[datetime, BeforeValidator(parse_overlord_datetime)]
