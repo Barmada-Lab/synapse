@@ -10,6 +10,7 @@ from prefect import flow, task
 from prefect.events import DeploymentEventTrigger
 from pydantic import DirectoryPath
 
+from app.acquisition.batch_model import Batch, OverlordBatchParams
 from app.common.errors import AggregateError
 from app.common.proc import run_subproc_async
 from app.core.config import settings
@@ -19,7 +20,6 @@ from app.labware.utils import WELLPLATE_RESOURCE_REGEX
 
 from . import crud as acquisition_crud
 from .models import AcquisitionPlan, Location
-from .overlord_batch import Batch, OverlordBatchParams
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
         ).to_parameter_collection()
 
         with batch_path.open("wb") as f:
-            f.write(batch.to_xml())  # type: ignore
+            f.write(batch.to_xml()) # type: ignore
 
 
 @flow
