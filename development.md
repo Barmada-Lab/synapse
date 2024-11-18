@@ -1,5 +1,9 @@
 # Synapse - Development
 
+## Prefect Cloud
+
+The only way I can figure to have distinct dev/prod deployments on prefect cloud is to have two different workspaces. Prefect will only allow one workspace per account, so you must make your own development workspace using a private email if you want to develop locally while integrating with prefect cloud features (events!)
+
 ## Docker Compose
 
 * Start the local stack with Docker Compose:
