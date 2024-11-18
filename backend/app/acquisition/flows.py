@@ -10,7 +10,14 @@ from prefect import flow, task
 from prefect.events import DeploymentEventTrigger
 from pydantic import DirectoryPath
 
-from app.acquisition.batch_model import Batch, OverlordBatchParams
+from app.acquisition.batch_model import (
+    OVERLORD_STRFMT,
+    Batch,
+    Labware,
+    OverlordBatchParams,
+    ReadTime,
+)
+from app.common.dt import local_now
 from app.common.errors import AggregateError
 from app.common.proc import run_subproc_async
 from app.core.config import settings
@@ -106,32 +113,63 @@ async def post_acquisition_flow(experiment_id: str):
 
 @task
 def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
+    for i, spec in enumerate(plan.schedule, start=1):
+        storage_location_map = {
+            Location.CYTOMAT2: "C2",
+            Location.HOTEL: "Plate Hotel",
+        }
+        storage_loc = storage_location_map[plan.storage_location]
 
-    for i, spec in enumerate(plan.schedule):
-        parent_name = plan.name
-        batch_name = f"{plan.name}_{i}"
-        batch_path = kiosk_path / f"{plan.name}_{i}.xml"
+        now_str = local_now().strftime(OVERLORD_STRFMT)
+        match plan.storage_location:
+            case Location.CYTOMAT2:
+                xml_prefix = "CQ1 With Live Cells "  # yes, the space is intentional....
+                storage_loc = "C2"
+                run_mode = 1
+            case Location.HOTEL:
+                xml_prefix = "Run Mode 2"
+                storage_loc = "Plate Hotel"
+                run_mode = 2
+            case _:
+                raise ValueError(
+                    f"Invalid plate storage location: {plan.storage_location}"
+                )
+
+        parent_name = f"{xml_prefix}___{now_str}"
+        batch_name = f"{parent_name}_READ{i:03d}"
+        batch_path = kiosk_path / f"{batch_name}.xml"
 
         batch = Batch(
             start_after=spec.start_after,
             batch_name=batch_name,
             parent_batch_name=parent_name,
+            run_mode=run_mode,
         )
 
+        batch.read_times.items = [
+            ReadTime(
+                index=i,
+                interval=int(plan.interval.total_seconds() / 60),
+                value=spec.start_after,
+            )
+        ]
+
+        batch.labware.items = [
+            Labware(
+                index=1,
+                type="96",
+                barcode=plan.wellplate.name,
+                start_location=storage_loc,
+                end_location=storage_loc,
+            )
+        ]
+
         batch.parameters = OverlordBatchParams(
-            wellplate_id=plan.wellplate_id,
+            wellplate_barcode=plan.wellplate.name,
             plateread_id=spec.id,  # type: ignore
-            read_index=i,
-            read_total=plan.n_reads,
-            user_first_name="",
-            user_last_name="",
-            user_email="",
-            user_data="",
-            batch_name=batch_name,
             acquisition_name=plan.name,
             labware_type="96",
-            plate_total=1,
-            plate_location_start="C2",
+            plate_location_start=storage_loc,
             scans_per_plate=1,
             scan_time_interval=1440,
             cq1_protocol_name=plan.protocol_name,
@@ -140,7 +178,7 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
         ).to_parameter_collection()
 
         with batch_path.open("wb") as f:
-            f.write(batch.to_xml()) # type: ignore
+            f.write(batch.to_xml())  # type: ignore
 
 
 @flow
@@ -158,8 +196,6 @@ def check_to_schedule_acquisition(resource_id: str):
             raise ValueError(f"Wellplate {wellplate_name} not found")
 
         kiosk_path = settings.OVERLORD_DIR / "Batches" / "Kiosk"
-        if not kiosk_path.exists():
-            print("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
         for plan in wellplate.acquisition_plans:
             if plan.storage_location == wellplate.location and plan.schedule == []:
                 plan = acquisition_crud.schedule_plan(session=session, plan=plan)

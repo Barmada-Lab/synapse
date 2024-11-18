@@ -15,21 +15,14 @@ class BarcodePrinter:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def __enter__(self):
-        if settings.ENVIRONMENT == "local":
-            return
         self.sock.connect((self.host, self.port))
         return self
 
     def print_zpl(self, label: str):
-        if settings.ENVIRONMENT == "local":
-            logger.info(f"Printing zpl: {label}")
-            return
         logger.debug(f"Printing zpl: {label}")
         self.sock.send(label.encode())
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if settings.ENVIRONMENT == "local":
-            return
         self.sock.close()
 
 

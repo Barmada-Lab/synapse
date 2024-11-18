@@ -50,7 +50,4 @@ def get_superuser_api_key_headers(client: TestClient) -> dict[str, str]:
     )
     api_id = response.json()["id"]
     api_key = response.json()["key"]
-    return {
-        "x-api-id": api_id,
-        "x-api-key": api_key
-    }
+    return {"x-api-id": api_id, "x-api-key": api_key}

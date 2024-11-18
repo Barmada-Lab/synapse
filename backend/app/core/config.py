@@ -151,5 +151,7 @@ class Settings(BaseSettings):
     OVERLORD_USER: str = "overlord@example.com"
     OVERLORD_PASSWORD: str = "changethis"
 
+    TIMEZONE: str = "UTC"
+
 
 settings = Settings()  # type: ignore
