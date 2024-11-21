@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Response, status
 from sqlmodel import func, select
 
 from app.core.deps import SessionDep
+from app.labware.models import Wellplate
 from app.users.deps import CurrentActiveUserDep
 
 from . import crud
@@ -49,8 +50,13 @@ def create_acquisition_plan(
         is not None
     ):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="A plan with this name already exists.",
+        )
+    if session.get(Wellplate, plan_create.wellplate_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No corresponding wellplate found.",
         )
     plan = crud.create_acquisition_plan(session=session, plan_create=plan_create)
     return AcquisitionPlanRecord.model_validate(plan)

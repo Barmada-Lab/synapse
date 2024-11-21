@@ -80,8 +80,24 @@ def test_create_plan_duplicate_returns_400(
         f"{settings.API_V1_STR}/acquisition/plans/",
         json=plan_a.model_dump(mode="json"),
     )
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_409_CONFLICT
     assert response.json()["detail"] == "A plan with this name already exists."
+
+
+def test_create_plan_invalid_wellplate_id(pw_authenticated_client: TestClient) -> None:
+    json = AcquisitionPlanCreate(
+        name=random_lower_string(),
+        wellplate_id=2**16,
+        storage_location=Location.CQ1,
+        protocol_name=random_lower_string(),
+        n_reads=1,
+    ).model_dump(mode="json")
+    response = pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/acquisition/plans/",
+        json=json,
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json()["detail"] == "No corresponding wellplate found."
 
 
 def test_delete_plan_by_id(pw_authenticated_client: TestClient, db: Session) -> None:
