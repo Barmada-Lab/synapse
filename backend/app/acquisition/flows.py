@@ -5,6 +5,7 @@ import platform
 import re
 import shutil
 from pathlib import Path
+from xml.etree.ElementTree import canonicalize
 
 from prefect import flow, task
 from prefect.events import DeploymentEventTrigger
@@ -14,8 +15,10 @@ from app.acquisition.batch_model import (
     OVERLORD_STRFMT,
     Batch,
     Labware,
+    LabwareCollection,
     OverlordBatchParams,
     ReadTime,
+    ReadTimeCollection,
 )
 from app.common.dt import local_now
 from app.common.errors import AggregateError
@@ -144,41 +147,42 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
             batch_name=batch_name,
             parent_batch_name=parent_name,
             run_mode=run_mode,
+            read_times=ReadTimeCollection(
+                items=[
+                    ReadTime(
+                        index=i,
+                        interval=int(plan.interval.total_seconds() / 60),
+                        value=spec.start_after,
+                    )
+                ]
+            ),
+            labware=LabwareCollection(
+                items=[
+                    Labware(
+                        index=1,
+                        type="96",
+                        barcode=plan.wellplate.name,
+                        start_location=storage_loc,
+                        end_location=storage_loc,
+                    )
+                ]
+            ),
+            parameters=OverlordBatchParams(
+                wellplate_barcode=plan.wellplate.name,
+                plateread_id=spec.id,  # type: ignore
+                acquisition_name=plan.name,
+                labware_type="96",
+                plate_location_start=storage_loc,
+                scans_per_plate=1,
+                scan_time_interval=int(plan.interval.total_seconds()),
+                cq1_protocol_name=plan.protocol_name,
+                read_barcodes=True,
+                plate_estimated_time=1337,
+            ).to_parameter_collection(),
         )
 
-        batch.read_times.items = [
-            ReadTime(
-                index=i,
-                interval=int(plan.interval.total_seconds() / 60),
-                value=spec.start_after,
-            )
-        ]
-
-        batch.labware.items = [
-            Labware(
-                index=1,
-                type="96",
-                barcode=plan.wellplate.name,
-                start_location=storage_loc,
-                end_location=storage_loc,
-            )
-        ]
-
-        batch.parameters = OverlordBatchParams(
-            wellplate_barcode=plan.wellplate.name,
-            plateread_id=spec.id,  # type: ignore
-            acquisition_name=plan.name,
-            labware_type="96",
-            plate_location_start=storage_loc,
-            scans_per_plate=1,
-            scan_time_interval=1440,
-            cq1_protocol_name=plan.protocol_name,
-            read_barcodes=True,
-            plate_estimated_time=7200,
-        ).to_parameter_collection()
-
-        with batch_path.open("wb") as f:
-            f.write(batch.to_xml())  # type: ignore
+        with open(batch_path, "w") as f:
+            canonicalize(batch.to_xml(), out=f)
 
 
 @flow
