@@ -3,8 +3,8 @@ from unittest.mock import patch
 from sqlmodel import Session
 
 from app.acquisition.crud import schedule_plan, update_plateread
+from app.acquisition.events import emit_plateread_status_update
 from app.acquisition.models import PlatereadSpecUpdate, PlatereadStatus
-from app.acquisition.utils import emit_plateread_status_update
 from tests.acquisition.utils import create_random_acquisition_plan
 
 
@@ -18,8 +18,9 @@ def test_emit_plateread_status_update(db: Session):
     updated = update_plateread(
         session=db, db_plateread=plateread, plateread_in=plateread_in
     )
+    resource_id = f"plateread.{plateread.id}"
     plateread_resource = {
-        "prefect.resource.id": f"acquisition_plan.{acquisition_plan.name}.{plateread.start_after.isoformat()}",
+        "prefect.resource.id": resource_id,
         "status.before": PlatereadStatus.PENDING.value,
         "status.after": PlatereadStatus.RUNNING.value,
     }
@@ -27,7 +28,7 @@ def test_emit_plateread_status_update(db: Session):
         "prefect.resource.id": f"acquisition_plan.{acquisition_plan.name}",
         "prefect.resource.role": "automation",
     }
-    with patch("app.acquisition.utils.emit_event") as emit_event_mock:
+    with patch("app.acquisition.events.emit_event") as emit_event_mock:
         emit_plateread_status_update(plateread=updated, before=PlatereadStatus.PENDING)
         emit_event_mock.assert_called_once_with(
             "plateread.status_update",
@@ -42,7 +43,7 @@ def test_emit_plateread_status_update_no_difference(db: Session):
 
     plateread = acquisition_plan.schedule[0]
     assert plateread.status == PlatereadStatus.PENDING
-    with patch("app.acquisition.utils.emit_event") as emit_event_mock:
+    with patch("app.acquisition.events.emit_event") as emit_event_mock:
         emit_plateread_status_update(
             plateread=plateread, before=PlatereadStatus.PENDING
         )

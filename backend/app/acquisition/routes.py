@@ -6,6 +6,7 @@ from app.labware.models import Wellplate
 from app.users.deps import CurrentActiveUserDep
 
 from . import crud
+from .events import emit_plateread_status_update
 from .models import (
     AcquisitionPlan,
     AcquisitionPlanCreate,
@@ -15,7 +16,6 @@ from .models import (
     PlatereadSpecRecord,
     PlatereadSpecUpdate,
 )
-from .utils import emit_plateread_status_update
 
 api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
@@ -45,10 +45,8 @@ def list_acquisition_plans(
 def create_acquisition_plan(
     session: SessionDep, plan_create: AcquisitionPlanCreate
 ) -> AcquisitionPlanRecord:
-    if (
-        crud.get_acquisition_plan_by_name(session=session, name=plan_create.name)
-        is not None
-    ):
+    plan = crud.get_acquisition_plan_by_name(session=session, name=plan_create.name)
+    if plan is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A plan with this name already exists.",

@@ -7,7 +7,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.labware import crud
 from app.labware.models import Location, WellplateCreate, WellplateRecord, WellplateType
-from tests.labware.utils import create_random_wellplate
+from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
 
 
@@ -126,7 +126,7 @@ def test_update_wellplate_emit_event(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:
     wellplate_in = create_random_wellplate(session=db)
-    with patch("app.labware.utils.emit_event") as mock_emit_event:
+    with patch("app.labware.events.emit_event") as mock_emit_event:
         pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
             json={"location": Location.CQ1.value},
@@ -145,7 +145,7 @@ def test_update_wellplate_no_change_doesnt_emit_event(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:
     wellplate_in = create_random_wellplate(session=db)
-    with patch("app.labware.utils.emit_event") as mock_emit_event:
+    with patch("app.labware.events.emit_event") as mock_emit_event:
         pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
             json={"location": Location.EXTERNAL.value},

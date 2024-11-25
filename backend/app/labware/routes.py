@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func
 from sqlmodel import select
 
+from app.common.models import Message
 from app.core.deps import SessionDep
 from app.users.deps import CurrentActiveUserDep
 
 from . import crud, flows
+from .events import emit_wellplate_location_update
 from .models import (
     Wellplate,
     WellplateCreate,
@@ -13,7 +15,6 @@ from .models import (
     WellplateRecord,
     WellplateUpdate,
 )
-from .utils import emit_wellplate_location_update
 
 api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
@@ -78,13 +79,19 @@ def update_wellplate_location(
 
 @api_router.post(
     "/{wellplate_id}/barcode",
-    response_model=None,
+    response_model=Message,
 )
-def print_barcode(session: SessionDep, wellplate_id: int) -> Response:
+async def print_barcode(session: SessionDep, wellplate_id: int) -> Message:
     if (wellplate := session.get(Wellplate, wellplate_id)) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found."
         )
     wellplate_name = wellplate.name
-    flows.print_wellplate_barcode(wellplate_name)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    try:
+        flows.print_wellplate_barcode(wellplate_name)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to print barcode: {e}",
+        )
+    return Message(content="Barcode printed.")

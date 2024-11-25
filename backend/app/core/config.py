@@ -148,9 +148,6 @@ class Settings(BaseSettings):
     ZPL_PRINTER_HOST: str
     ZPL_PRINTER_PORT: int
 
-    OVERLORD_USER: str = "overlord@example.com"
-    OVERLORD_PASSWORD: str = "changethis"
-
     TIMEZONE: str = "UTC"
 
 

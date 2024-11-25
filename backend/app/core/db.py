@@ -23,14 +23,3 @@ def init_db(session: Session) -> None:
             is_superuser=True,
         )
         super_user = crud.create_user(session=session, user_create=user_in)
-
-    overlord_user = session.exec(
-        select(User).where(User.email == settings.OVERLORD_USER)
-    ).first()
-    if not overlord_user:
-        user_in = UserCreate(
-            email=settings.OVERLORD_USER,
-            password=settings.OVERLORD_PASSWORD,
-            is_superuser=True,
-        )
-        overlord_user = crud.create_user(session=session, user_create=user_in)

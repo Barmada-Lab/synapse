@@ -12,7 +12,7 @@ from app.acquisition.models import (
 from app.core.config import settings
 from app.labware.models import Location
 from tests.acquisition.utils import create_random_acquisition_plan
-from tests.labware.utils import create_random_wellplate
+from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
 
 

@@ -127,7 +127,9 @@ class AcquisitionBase(SQLModel):
 class Acquisition(AcquisitionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    collections: list["ArtifactCollection"] = Relationship(back_populates="acquisition")
+    collections: list["ArtifactCollection"] = Relationship(
+        back_populates="acquisition", cascade_delete=True
+    )
 
     acquisition_plan_id: int | None = Field(foreign_key="acquisitionplan.id")
     acquisition_plan: Optional["AcquisitionPlan"] = Relationship(
@@ -184,8 +186,12 @@ class ArtifactCollectionBase(SQLModel):
 class ArtifactCollection(ArtifactCollectionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    acquisition_id: int = Field(foreign_key="acquisition.id")
+    acquisition_id: int = Field(foreign_key="acquisition.id", ondelete="CASCADE")
     acquisition: "Acquisition" = Relationship(back_populates="collections")
+
+    artifacts: list["Artifact"] = Relationship(
+        back_populates="collection", cascade_delete=True
+    )
 
 
 class ArtifactCollectionCreate(ArtifactCollectionBase):
@@ -193,4 +199,24 @@ class ArtifactCollectionCreate(ArtifactCollectionBase):
 
 
 class ArtifactCollectionRecord(ArtifactCollectionBase):
+    id: int
+
+
+class ArtifactBase(SQLModel):
+    name: str
+
+
+class Artifact(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+
+    collection_id: int = Field(foreign_key="artifactcollection.id", ondelete="CASCADE")
+    collection: ArtifactCollection = Relationship(back_populates="artifacts")
+
+
+class ArtifactCreate(ArtifactBase):
+    pass
+
+
+class ArtifactRecord(ArtifactBase):
     id: int

@@ -1,14 +1,23 @@
+import random
 from datetime import timedelta
 
 from sqlmodel import Session
 
-from app.acquisition.crud import create_acquisition_plan
+from app.acquisition.crud import (
+    create_acquisition,
+    create_acquisition_plan,
+    create_artifact_collection,
+)
 from app.acquisition.models import (
+    AcquisitionCreate,
     AcquisitionPlanCreate,
+    ArtifactCollectionCreate,
+    ArtifactType,
     ImagingPriority,
+    Repository,
 )
 from app.labware.models import Location
-from tests.labware.utils import create_random_wellplate
+from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
 
 
@@ -39,3 +48,19 @@ def create_random_acquisition_plan(
         priority=kwargs["priority"],
     )
     return create_acquisition_plan(session=session, plan_create=acquisition_plan)
+
+
+def create_random_artifact_collection(*, session: Session, **kwargs):
+    acquisition_create = AcquisitionCreate(name=random_lower_string())
+    acquisition = create_acquisition(
+        session=session, acquisition_create=acquisition_create
+    )
+    kwargs.setdefault("name", random_lower_string())
+    kwargs.setdefault("artifact_type", random.choice(list(ArtifactType)))
+    kwargs.setdefault("location", random.choice(list(Repository)))
+    artifact_collection_create = ArtifactCollectionCreate(
+        acquisition_id=acquisition.id, **kwargs
+    )
+    return create_artifact_collection(
+        session=session, artifact_collection_create=artifact_collection_create
+    )

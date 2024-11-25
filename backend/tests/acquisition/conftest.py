@@ -40,6 +40,10 @@ def archive_dir() -> Generator[Path, None, None]:
 def overlord_dir() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory() as tempdir:
         settings.OVERLORD_DIR = Path(tempdir)
+        (settings.OVERLORD_DIR / "Batches" / "Kiosk").mkdir(parents=True, exist_ok=True)
+        (settings.OVERLORD_DIR / "Batches" / "Queued").mkdir(exist_ok=True)
+        (settings.OVERLORD_DIR / "Batches" / "Archive").mkdir(exist_ok=True)
+        (settings.OVERLORD_DIR / "Batches" / "Running").mkdir(exist_ok=True)
         yield Path(tempdir)
 
 

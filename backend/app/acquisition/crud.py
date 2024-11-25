@@ -9,10 +9,14 @@ from .models import (
     AcquisitionCreate,
     AcquisitionPlan,
     AcquisitionPlanCreate,
+    Artifact,
     ArtifactCollection,
     ArtifactCollectionCreate,
+    ArtifactCreate,
+    ArtifactType,
     PlatereadSpec,
     PlatereadSpecUpdate,
+    Repository,
 )
 
 
@@ -102,3 +106,55 @@ def create_artifact_collection(
     session.commit()
     session.refresh(db_obj)
     return db_obj
+
+
+def get_artifact_collection_by_key(
+    *, session: Session, acquisition_id: int, key: tuple[Repository, ArtifactType]
+) -> ArtifactCollection | None:
+    statement = select(ArtifactCollection).where(
+        ArtifactCollection.acquisition_id == acquisition_id
+        and ArtifactCollection.location == key[0]
+        and ArtifactCollection.artifact_type == key[1]
+    )
+    return session.exec(statement).first()
+
+
+def create_artifact(
+    *, session: Session, artifact_collection_id: int, artifact_create: ArtifactCreate
+) -> Artifact:
+    collection_obj = session.get(ArtifactCollection, artifact_collection_id)
+    if collection_obj is None:
+        raise ValueError("Collection not found")
+    db_obj = Artifact.model_validate(
+        artifact_create, update={"collection_id": artifact_collection_id}
+    )
+    session.add(db_obj)
+    session.commit()
+    session.refresh(db_obj)
+    return db_obj
+
+
+# TODO: write tests
+# def create_artifact_collection_replica(
+#     *, session: Session, artifact_collection: ArtifactCollection, location: Repository
+# ) -> ArtifactCollection:
+#     other_artifact_collections = artifact_collection.acquisition.collections
+#     if artifact_collection.location == location or any(
+#         other.location == location for other in other_artifact_collections
+#     ):
+#         raise ValueError("Duplicate artifact collection!")
+#     create = ArtifactCollectionCreate(
+#         location=location,
+#         artifact_type=artifact_collection.artifact_type,
+#         acquisition_id=artifact_collection.acquisition_id,
+#     )
+#     created = create_artifact_collection(session=session, artifact_collection_create=create)
+#     for artifact in artifact_collection.artifacts:
+#         create_artifact(
+#             session=session,
+#             artifact_collection_id=created.id,  # type: ignore
+#             artifact_create=ArtifactCreate(
+#                 name=artifact.name,
+#             ),
+#         )
+#     return created

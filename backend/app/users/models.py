@@ -86,7 +86,7 @@ class ApplicationRecord(SQLModel):
 
 
 class Application(ApplicationRecord, table=True):
-    hashed_key: str = Field(index=True)
+    hashed_key: str = Field()
     user_id: uuid.UUID = Field(foreign_key="user.id", ondelete="CASCADE")
     user: User = Relationship(back_populates="applications")
 

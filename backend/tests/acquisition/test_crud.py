@@ -15,7 +15,9 @@ from app.acquisition.models import (
     AcquisitionCreate,
     AcquisitionPlan,
     AcquisitionPlanCreate,
+    Artifact,
     ArtifactCollectionCreate,
+    ArtifactCreate,
     ArtifactType,
     ImagingPriority,
     PlatereadSpecUpdate,
@@ -23,8 +25,11 @@ from app.acquisition.models import (
     Repository,
 )
 from app.labware.models import Location, Wellplate
-from tests.acquisition.utils import create_random_acquisition_plan
-from tests.labware.utils import create_random_wellplate
+from tests.acquisition.utils import (
+    create_random_acquisition_plan,
+    create_random_artifact_collection,
+)
+from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
 
 
@@ -214,6 +219,18 @@ def test_materialize_schedule(db: Session) -> None:
     assert t0.start_after + timedelta(minutes=1) == t0.deadline
 
 
+def test_update_plateread(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db)
+    plan = schedule_plan(session=db, plan=plan)
+
+    plateread = plan.schedule[0]
+    plateread_in = PlatereadSpecUpdate(status=PlatereadStatus.COMPLETED)
+    updated = crud.update_plateread(
+        session=db, db_plateread=plateread, plateread_in=plateread_in
+    )
+    assert updated.status == PlatereadStatus.COMPLETED
+
+
 def test_create_acquisition(db: Session) -> None:
     name = random_lower_string()
     acquisition_create = AcquisitionCreate(name=name)
@@ -319,13 +336,38 @@ def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
         assert "Duplicate artifact collection" in str(e)
 
 
-def test_update_plateread(db: Session) -> None:
-    plan = create_random_acquisition_plan(session=db)
-    plan = schedule_plan(session=db, plan=plan)
-
-    plateread = plan.schedule[0]
-    plateread_in = PlatereadSpecUpdate(status=PlatereadStatus.COMPLETED)
-    updated = crud.update_plateread(
-        session=db, db_plateread=plateread, plateread_in=plateread_in
+def test_get_artifact_collection_by_key(db: Session) -> None:
+    collection = create_random_artifact_collection(session=db)
+    retrieved = crud.get_artifact_collection_by_key(
+        session=db,
+        acquisition_id=collection.acquisition_id,
+        key=(collection.location, collection.artifact_type),
     )
-    assert updated.status == PlatereadStatus.COMPLETED
+    assert retrieved == collection
+
+
+def test_create_artifact(db: Session) -> None:
+    collection = create_random_artifact_collection(session=db)
+    artifact_create = ArtifactCreate(
+        name=random_lower_string(), collection_id=collection.id
+    )
+    crud.create_artifact(
+        session=db,
+        artifact_collection_id=collection.id,
+        artifact_create=artifact_create,
+    )
+
+
+def test_delete_artifact_cascade_from_artifact_collection_delete(db: Session) -> None:
+    collection = create_random_artifact_collection(session=db)
+    artifact_create = ArtifactCreate(
+        name=random_lower_string(), collection_id=collection.id
+    )
+    artifact = crud.create_artifact(
+        session=db,
+        artifact_collection_id=collection.id,
+        artifact_create=artifact_create,
+    )
+    db.delete(collection)
+    db.commit()
+    assert db.get(Artifact, artifact.id) is None

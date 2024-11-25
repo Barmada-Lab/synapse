@@ -38,4 +38,4 @@ COPY ./app /app/app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
 
-CMD ["prefect-worker"]
+CMD ["synapse-flow-worker"]
