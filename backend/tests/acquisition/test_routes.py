@@ -13,8 +13,10 @@ from app.acquisition.models import (
     AcquisitionRecord,
     AnalysisPlanCreate,
     AnalysisTrigger,
+    ProcessStatus,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
+    SBatchAnalysisSpecUpdate,
 )
 from app.core.config import settings
 from app.labware.models import Location
@@ -22,6 +24,7 @@ from tests.acquisition.utils import (
     create_random_acquisition,
     create_random_acquisition_plan,
     create_random_analysis_plan,
+    create_random_analysis_spec,
 )
 from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
@@ -219,6 +222,38 @@ def test_create_analysis_requires_authentication(
     response = unauthenticated_client.post(
         f"{settings.API_V1_STR}/analyses",
         json=analysis.model_dump(mode="json"),
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_update_analysis(pw_authenticated_client: TestClient, db: Session) -> None:
+    spec = create_random_analysis_spec(session=db)
+    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    response = pw_authenticated_client.patch(
+        f"{settings.API_V1_STR}/analyses/{spec.id}",
+        json=update.model_dump(mode="json"),
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["analysis_status"] == ProcessStatus.COMPLETED.value
+
+
+def test_update_analysis_not_found(pw_authenticated_client: TestClient) -> None:
+    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    response = pw_authenticated_client.patch(
+        f"{settings.API_V1_STR}/analyses/{2**16}",
+        json=update.model_dump(mode="json"),
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Analysis spec not found."
+
+
+def test_update_analysis_requires_authentication(
+    unauthenticated_client: TestClient,
+) -> None:
+    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    response = unauthenticated_client.patch(
+        f"{settings.API_V1_STR}/analyses/1",
+        json=update.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

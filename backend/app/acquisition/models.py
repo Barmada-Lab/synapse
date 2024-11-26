@@ -307,3 +307,7 @@ class SBatchAnalysisSpecCreate(SBatchAnalysisSpecBase):
 class SBatchAnalysisSpecRecord(SBatchAnalysisSpecBase):
     id: int
     analysis_status: ProcessStatus
+
+
+class SBatchAnalysisSpecUpdate(SQLModel):
+    analysis_status: ProcessStatus

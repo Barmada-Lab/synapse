@@ -23,6 +23,7 @@ from .models import (
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
     SBatchAnalysisSpecRecord,
+    SBatchAnalysisSpecUpdate,
 )
 
 api_router = APIRouter(dependencies=[CurrentActiveUserDep])
@@ -124,6 +125,24 @@ def create_sbatch_analysis_spec(
         session=session, analysis_plan_id=analysis_plan_id, create=spec_create
     )
     return SBatchAnalysisSpecRecord.model_validate(spec)
+
+
+@api_router.patch(
+    "/analyses/{id}",
+    response_model=SBatchAnalysisSpecRecord,
+)
+def update_sbatch_analysis_spec(
+    *, session: SessionDep, id: int, update: SBatchAnalysisSpecUpdate
+) -> SBatchAnalysisSpecRecord:
+    analysis_spec = session.get(SBatchAnalysisSpec, id)
+    if analysis_spec is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis spec not found."
+        )
+    updated = crud.update_analysis_spec(
+        session=session, db_analysis=analysis_spec, update=update
+    )
+    return SBatchAnalysisSpecRecord.model_validate(updated)
 
 
 @api_router.delete("/analyses/{id}")

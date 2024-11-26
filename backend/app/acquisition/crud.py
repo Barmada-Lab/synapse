@@ -18,6 +18,7 @@ from .models import (
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
+    SBatchAnalysisSpecUpdate,
 )
 
 
@@ -138,6 +139,7 @@ def update_plateread(
     db_plateread.sqlmodel_update(plateread_data)
     session.add(db_plateread)
     session.commit()
+    session.refresh(db_plateread)
     return db_plateread
 
 
@@ -159,3 +161,17 @@ def create_analysis_spec(
     session.commit()
     session.refresh(analysis)
     return analysis
+
+
+def update_analysis_spec(
+    *,
+    session: Session,
+    db_analysis: SBatchAnalysisSpec,
+    update: SBatchAnalysisSpecUpdate,
+) -> SBatchAnalysisSpec:
+    analysis_data = update.model_dump(exclude_unset=True)
+    db_analysis.sqlmodel_update(analysis_data)
+    session.add(db_analysis)
+    session.commit()
+    session.refresh(db_analysis)
+    return db_analysis

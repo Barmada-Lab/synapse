@@ -25,11 +25,13 @@ from app.acquisition.models import (
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
+    SBatchAnalysisSpecUpdate,
 )
 from app.labware.models import Location, Wellplate
 from tests.acquisition.utils import (
     create_random_acquisition,
     create_random_acquisition_plan,
+    create_random_analysis_spec,
     create_random_artifact_collection,
 )
 from tests.labware.events import create_random_wellplate
@@ -446,3 +448,10 @@ def test_delete_analysis_plan_cascades_delete(db: Session) -> None:
     db.delete(plan)
     db.commit()
     assert db.get(SBatchAnalysisSpec, spec.id) is None
+
+
+def test_update_analysis_spec(db: Session) -> None:
+    spec = create_random_analysis_spec(session=db)
+    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    updated = crud.update_analysis_spec(session=db, db_analysis=spec, update=update)
+    assert updated.analysis_status == ProcessStatus.COMPLETED

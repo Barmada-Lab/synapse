@@ -7,6 +7,7 @@ from app.acquisition.crud import (
     create_acquisition,
     create_acquisition_plan,
     create_analysis_plan,
+    create_analysis_spec,
     create_artifact_collection,
 )
 from app.acquisition.models import (
@@ -15,11 +16,14 @@ from app.acquisition.models import (
     AcquisitionPlan,
     AcquisitionPlanCreate,
     AnalysisPlan,
+    AnalysisTrigger,
     ArtifactCollection,
     ArtifactCollectionCreate,
     ArtifactType,
     ImagingPriority,
     Repository,
+    SBatchAnalysisSpec,
+    SBatchAnalysisSpecCreate,
 )
 from app.labware.models import Location
 from tests.labware.events import create_random_wellplate
@@ -37,6 +41,21 @@ def create_random_analysis_plan(*, session: Session) -> AnalysisPlan:
     return create_analysis_plan(
         session=session,
         acquisition_id=acquisition.id,  # type: ignore
+    )
+
+
+def create_random_analysis_spec(*, session: Session) -> SBatchAnalysisSpec:
+    analysis_plan = create_random_analysis_plan(session=session)
+    analysis_create = SBatchAnalysisSpecCreate(
+        trigger=random.choice(list(AnalysisTrigger)),
+        analysis_cmd=random_lower_string(),
+        analysis_args=[random_lower_string()],
+        analysis_plan_id=analysis_plan.id,
+    )
+    return create_analysis_spec(
+        session=session,
+        analysis_plan_id=analysis_plan.id,  # type: ignore
+        create=analysis_create,
     )
 
 
