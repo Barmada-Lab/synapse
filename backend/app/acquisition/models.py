@@ -243,8 +243,18 @@ class AnalysisPlan(SQLModel, table=True):
     )
 
 
+class AnalysisTrigger(str, enum.Enum):
+    POST_ACQUISTION = "POST_ACQUISITION"
+    POST_READ = "POST_READ"
+
+
 class SBatchAnalysisSpec(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    trigger: AnalysisTrigger = Field(
+        sa_column=Column(Enum(AnalysisTrigger), nullable=False)
+    )
+    trigger_value: int | None
+
     analysis_status: ProcessStatus = Field(
         sa_column=Column(Enum(ProcessStatus), nullable=False),
         default=ProcessStatus.PENDING,
