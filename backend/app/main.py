@@ -1,3 +1,5 @@
+from importlib.metadata import version
+
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -18,6 +20,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
+    version=version("app"),
 )
 
 # Set all CORS enabled origins
