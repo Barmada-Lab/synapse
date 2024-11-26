@@ -259,7 +259,14 @@ class AnalysisPlan(SQLModel, table=True):
     )
 
 
-class SBatchAnalysisSpec(SQLModel, table=True):
+class SBatchAnalysisSpecBase(SQLModel):
+    trigger: AnalysisTrigger
+    trigger_value: int | None = None
+    analysis_cmd: str
+    analysis_args: list[str]
+
+
+class SBatchAnalysisSpec(SBatchAnalysisSpecBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     trigger: AnalysisTrigger = Field(
         sa_column=Column(Enum(AnalysisTrigger), nullable=False)
@@ -277,3 +284,12 @@ class SBatchAnalysisSpec(SQLModel, table=True):
 
     analysis_plan_id: int = Field(foreign_key="analysisplan.id", ondelete="CASCADE")
     analysis_plan: AnalysisPlan = Relationship(back_populates="sbatch_analyses")
+
+
+class SBatchAnalysisSpecCreate(SBatchAnalysisSpecBase):
+    pass
+
+
+class SBatchAnalysisSpecRecord(SBatchAnalysisSpecBase):
+    id: int
+    analysis_status: ProcessStatus

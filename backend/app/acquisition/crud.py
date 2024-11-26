@@ -7,6 +7,7 @@ from .models import (
     AcquisitionCreate,
     AcquisitionPlan,
     AcquisitionPlanCreate,
+    AnalysisPlan,
     Artifact,
     ArtifactCollection,
     ArtifactCollectionCreate,
@@ -15,6 +16,8 @@ from .models import (
     PlatereadSpec,
     PlatereadSpecUpdate,
     Repository,
+    SBatchAnalysisSpec,
+    SBatchAnalysisSpecCreate,
 )
 
 
@@ -32,46 +35,6 @@ def get_acquisition_by_name(*, session: Session, name: str) -> Acquisition | Non
     statement = select(Acquisition).where(Acquisition.name == name)
     db_obj = session.exec(statement).first()
     return db_obj
-
-
-def create_acquisition_plan(
-    *, session: Session, plan_create: AcquisitionPlanCreate
-) -> AcquisitionPlan:
-    acquisition_plan = AcquisitionPlan.model_validate(plan_create)
-    session.add(acquisition_plan)
-    session.commit()
-    session.refresh(acquisition_plan)
-    return acquisition_plan
-
-
-def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
-    start_time = datetime.now()
-    for i in range(plan.n_reads):
-        start_after = start_time + (i * plan.interval)
-        deadline = start_time + i * plan.interval + plan.deadline_delta
-        session.add(
-            PlatereadSpec(
-                start_after=start_after,
-                deadline=deadline,
-                acquisition_plan_id=plan.id,
-            )
-        )
-    session.commit()
-    session.refresh(plan)
-    return plan
-
-
-def update_plateread(
-    *,
-    session: Session,
-    db_plateread: PlatereadSpec,
-    plateread_in: PlatereadSpecUpdate,
-) -> PlatereadSpec:
-    plateread_data = plateread_in.model_dump(exclude_unset=True)
-    db_plateread.sqlmodel_update(plateread_data)
-    session.add(db_plateread)
-    session.commit()
-    return db_plateread
 
 
 def create_artifact_collection(
@@ -136,3 +99,63 @@ def create_artifact(
 #             ),
 #         )
 #     return created
+
+
+def create_acquisition_plan(
+    *, session: Session, plan_create: AcquisitionPlanCreate
+) -> AcquisitionPlan:
+    acquisition_plan = AcquisitionPlan.model_validate(plan_create)
+    session.add(acquisition_plan)
+    session.commit()
+    session.refresh(acquisition_plan)
+    return acquisition_plan
+
+
+def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
+    start_time = datetime.now()
+    for i in range(plan.n_reads):
+        start_after = start_time + (i * plan.interval)
+        deadline = start_time + i * plan.interval + plan.deadline_delta
+        session.add(
+            PlatereadSpec(
+                start_after=start_after,
+                deadline=deadline,
+                acquisition_plan_id=plan.id,
+            )
+        )
+    session.commit()
+    session.refresh(plan)
+    return plan
+
+
+def update_plateread(
+    *,
+    session: Session,
+    db_plateread: PlatereadSpec,
+    plateread_in: PlatereadSpecUpdate,
+) -> PlatereadSpec:
+    plateread_data = plateread_in.model_dump(exclude_unset=True)
+    db_plateread.sqlmodel_update(plateread_data)
+    session.add(db_plateread)
+    session.commit()
+    return db_plateread
+
+
+def create_analysis_plan(*, session: Session, acquisition_id: int) -> AnalysisPlan:
+    plan = AnalysisPlan(acquisition_id=acquisition_id)
+    session.add(plan)
+    session.commit()
+    session.refresh(plan)
+    return plan
+
+
+def create_analysis_spec(
+    *, session: Session, analysis_plan_id: int, create: SBatchAnalysisSpecCreate
+) -> SBatchAnalysisSpec:
+    analysis = SBatchAnalysisSpec.model_validate(
+        create, update={"analysis_plan_id": analysis_plan_id}
+    )
+    session.add(analysis)
+    session.commit()
+    session.refresh(analysis)
+    return analysis

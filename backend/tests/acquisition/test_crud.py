@@ -14,6 +14,7 @@ from app.acquisition.models import (
     AcquisitionCreate,
     AcquisitionPlan,
     AcquisitionPlanCreate,
+    AnalysisTrigger,
     Artifact,
     ArtifactCollectionCreate,
     ArtifactCreate,
@@ -22,6 +23,8 @@ from app.acquisition.models import (
     PlatereadSpecUpdate,
     ProcessStatus,
     Repository,
+    SBatchAnalysisSpec,
+    SBatchAnalysisSpecCreate,
 )
 from app.labware.models import Location, Wellplate
 from tests.acquisition.utils import (
@@ -31,6 +34,159 @@ from tests.acquisition.utils import (
 )
 from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
+
+
+def test_create_acquisition(db: Session) -> None:
+    name = random_lower_string()
+    acquisition_create = AcquisitionCreate(name=name)
+
+    acquisition = crud.create_acquisition(
+        session=db, acquisition_create=acquisition_create
+    )
+    assert acquisition.name == name
+
+
+def test_create_acquisition_already_exists(db: Session) -> None:
+    name = random_lower_string()
+    acquisition_create = AcquisitionCreate(name=name)
+
+    _ = crud.create_acquisition(session=db, acquisition_create=acquisition_create)
+    with pytest.raises(IntegrityError):
+        crud.create_acquisition(session=db, acquisition_create=acquisition_create)
+    db.rollback()
+
+
+def test_get_acquisition_by_name(db: Session) -> None:
+    name = random_lower_string()
+    acquisition_create = AcquisitionCreate(name=name)
+
+    acquisition = crud.create_acquisition(
+        session=db, acquisition_create=acquisition_create
+    )
+    stored_acquisition = crud.get_acquisition_by_name(session=db, name=name)
+    assert stored_acquisition is not None
+    assert acquisition.name == stored_acquisition.name
+
+
+def test_get_acquisition_by_name_not_found(db: Session) -> None:
+    name = random_lower_string()
+    stored_acquisition = crud.get_acquisition_by_name(session=db, name=name)
+    assert stored_acquisition is None
+
+
+def test_create_artifact_collection(db: Session) -> None:
+    acquisition_create = AcquisitionCreate(name=random_lower_string())
+    acquisition = crud.create_acquisition(
+        session=db, acquisition_create=acquisition_create
+    )
+
+    acquisition_id = acquisition.id
+    location = Repository.ACQUISITION
+    artifact_type = ArtifactType.ACQUISITION
+    artifact_collection_create = ArtifactCollectionCreate(
+        location=location,
+        artifact_type=artifact_type,
+        acquisition_id=acquisition_id,
+    )
+
+    artifact = crud.create_artifact_collection(
+        session=db,
+        acquisition_id=acquisition_id,  # type: ignore
+        artifact_collection_create=artifact_collection_create,
+    )
+    assert artifact.location == location
+    assert artifact.artifact_type == artifact_type
+    assert artifact.acquisition_id == acquisition_id
+
+    db.refresh(acquisition)
+    assert acquisition.collections[0].id == artifact.id
+
+
+def test_create_artifact_collection_invalid_acquisition_id(db: Session) -> None:
+    acquisition_id = 2**16
+    artifact_collection_create = ArtifactCollectionCreate(
+        location=Repository.ACQUISITION,
+        artifact_type=ArtifactType.ACQUISITION,
+        acquisition_id=acquisition_id,
+    )
+
+    with pytest.raises(IntegrityError) as e:
+        crud.create_artifact_collection(
+            session=db,
+            acquisition_id=acquisition_id,
+            artifact_collection_create=artifact_collection_create,
+        )
+        assert "Acquisition not found" in str(e)
+    db.rollback()
+
+
+def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
+    """Each combination of ArtifactType and Repository should be unique"""
+    acquisition_create = AcquisitionCreate(name=random_lower_string())
+    acquisition = crud.create_acquisition(
+        session=db, acquisition_create=acquisition_create
+    )
+
+    acquisition_id = acquisition.id
+    location = Repository.ACQUISITION
+    artifact_type = ArtifactType.ACQUISITION
+    artifact_collection_create = ArtifactCollectionCreate(
+        location=location,
+        artifact_type=artifact_type,
+        acquisition_id=acquisition_id,
+    )
+
+    _ = crud.create_artifact_collection(
+        session=db,
+        acquisition_id=acquisition_id,  # type: ignore
+        artifact_collection_create=artifact_collection_create,
+    )
+    with pytest.raises(IntegrityError):
+        crud.create_artifact_collection(
+            session=db,
+            acquisition_id=acquisition_id,  # type: ignore
+            artifact_collection_create=artifact_collection_create,
+        )
+    db.rollback()
+
+
+def test_get_artifact_collection_by_key(db: Session) -> None:
+    collection = create_random_artifact_collection(session=db)
+    retrieved = crud.get_artifact_collection_by_key(
+        session=db,
+        acquisition_id=collection.acquisition_id,
+        key=(collection.location, collection.artifact_type),
+    )
+    assert retrieved == collection
+
+
+def test_create_artifact(db: Session) -> None:
+    collection = create_random_artifact_collection(session=db)
+    artifact_create = ArtifactCreate(
+        name=random_lower_string(), collection_id=collection.id
+    )
+    assert collection.id
+    crud.create_artifact(
+        session=db,
+        artifact_collection_id=collection.id,
+        artifact_create=artifact_create,
+    )
+
+
+def test_delete_artifact_cascade_from_artifact_collection_delete(db: Session) -> None:
+    collection = create_random_artifact_collection(session=db)
+    artifact_create = ArtifactCreate(
+        name=random_lower_string(), collection_id=collection.id
+    )
+    assert collection.id
+    artifact = crud.create_artifact(
+        session=db,
+        artifact_collection_id=collection.id,
+        artifact_create=artifact_create,
+    )
+    db.delete(collection)
+    db.commit()
+    assert db.get(Artifact, artifact.id) is None
 
 
 def test_create_acquisition_plan(db: Session) -> None:
@@ -225,154 +381,68 @@ def test_update_plateread(db: Session) -> None:
     assert updated.status == ProcessStatus.COMPLETED
 
 
-def test_create_acquisition(db: Session) -> None:
-    name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
-
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
-    )
-    assert acquisition.name == name
+def test_create_analysis_plan(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    assert acquisition.id
+    plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
+    assert plan.acquisition_id == acquisition.id
 
 
-def test_create_acquisition_already_exists(db: Session) -> None:
-    name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
-
-    _ = crud.create_acquisition(session=db, acquisition_create=acquisition_create)
+def test_create_duplicate_analysis_plan_raises_integrityerror(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    assert acquisition.id
+    _ = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
     with pytest.raises(IntegrityError):
-        crud.create_acquisition(session=db, acquisition_create=acquisition_create)
+        crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
     db.rollback()
 
 
-def test_get_acquisition_by_name(db: Session) -> None:
-    name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
-
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
+def test_create_analysis_spec(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    assert acquisition.id
+    plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
+    assert plan.id
+    spec_create = SBatchAnalysisSpecCreate(
+        trigger=AnalysisTrigger.POST_ACQUISTION,
+        analysis_cmd="echo",
+        analysis_args=["hello"],
     )
-    stored_acquisition = crud.get_acquisition_by_name(session=db, name=name)
-    assert stored_acquisition is not None
-    assert acquisition.name == stored_acquisition.name
-
-
-def test_get_acquisition_by_name_not_found(db: Session) -> None:
-    name = random_lower_string()
-    stored_acquisition = crud.get_acquisition_by_name(session=db, name=name)
-    assert stored_acquisition is None
-
-
-def test_create_artifact_collection(db: Session) -> None:
-    acquisition_create = AcquisitionCreate(name=random_lower_string())
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
+    spec = crud.create_analysis_spec(
+        session=db, analysis_plan_id=plan.id, create=spec_create
     )
+    assert spec.analysis_plan_id == plan.id
+    assert spec.analysis_status == ProcessStatus.PENDING
 
-    acquisition_id = acquisition.id
-    location = Repository.ACQUISITION
-    artifact_type = ArtifactType.ACQUISITION
-    artifact_collection_create = ArtifactCollectionCreate(
-        location=location,
-        artifact_type=artifact_type,
-        acquisition_id=acquisition_id,
+
+def test_delete_analysis_spec(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    assert acquisition.id
+    plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
+    assert plan.id
+    spec_create = SBatchAnalysisSpecCreate(
+        trigger=AnalysisTrigger.POST_ACQUISTION,
+        analysis_cmd="echo",
+        analysis_args=["hello"],
     )
-
-    artifact = crud.create_artifact_collection(
-        session=db,
-        acquisition_id=acquisition_id,
-        artifact_collection_create=artifact_collection_create,
+    spec = crud.create_analysis_spec(
+        session=db, analysis_plan_id=plan.id, create=spec_create
     )
-    assert artifact.location == location
-    assert artifact.artifact_type == artifact_type
-    assert artifact.acquisition_id == acquisition_id
-
-    db.refresh(acquisition)
-    assert acquisition.collections[0].id == artifact.id
+    db.delete(spec)
 
 
-def test_create_artifact_collection_invalid_acquisition_id(db: Session) -> None:
-    acquisition_id = 2**16
-    artifact_collection_create = ArtifactCollectionCreate(
-        location=Repository.ACQUISITION,
-        artifact_type=ArtifactType.ACQUISITION,
-        acquisition_id=acquisition_id,
+def test_delete_analysis_plan_cascades_delete(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    assert acquisition.id
+    plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
+    assert plan.id
+    spec_create = SBatchAnalysisSpecCreate(
+        trigger=AnalysisTrigger.POST_ACQUISTION,
+        analysis_cmd="echo",
+        analysis_args=["hello"],
     )
-
-    with pytest.raises(IntegrityError) as e:
-        crud.create_artifact_collection(
-            session=db,
-            acquisition_id=acquisition_id,
-            artifact_collection_create=artifact_collection_create,
-        )
-        assert "Acquisition not found" in str(e)
-    db.rollback()
-
-
-def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
-    """Each combination of ArtifactType and Repository should be unique"""
-    acquisition_create = AcquisitionCreate(name=random_lower_string())
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
+    spec = crud.create_analysis_spec(
+        session=db, analysis_plan_id=plan.id, create=spec_create
     )
-
-    acquisition_id = acquisition.id
-    location = Repository.ACQUISITION
-    artifact_type = ArtifactType.ACQUISITION
-    artifact_collection_create = ArtifactCollectionCreate(
-        location=location,
-        artifact_type=artifact_type,
-        acquisition_id=acquisition_id,
-    )
-
-    _ = crud.create_artifact_collection(
-        session=db,
-        acquisition_id=acquisition_id,  # type: ignore
-        artifact_collection_create=artifact_collection_create,
-    )
-    with pytest.raises(IntegrityError):
-        crud.create_artifact_collection(
-            session=db,
-            acquisition_id=acquisition_id,  # type: ignore
-            artifact_collection_create=artifact_collection_create,
-        )
-    db.rollback()
-
-
-def test_get_artifact_collection_by_key(db: Session) -> None:
-    collection = create_random_artifact_collection(session=db)
-    retrieved = crud.get_artifact_collection_by_key(
-        session=db,
-        acquisition_id=collection.acquisition_id,
-        key=(collection.location, collection.artifact_type),
-    )
-    assert retrieved == collection
-
-
-def test_create_artifact(db: Session) -> None:
-    collection = create_random_artifact_collection(session=db)
-    artifact_create = ArtifactCreate(
-        name=random_lower_string(), collection_id=collection.id
-    )
-    assert collection.id
-    crud.create_artifact(
-        session=db,
-        artifact_collection_id=collection.id,
-        artifact_create=artifact_create,
-    )
-
-
-def test_delete_artifact_cascade_from_artifact_collection_delete(db: Session) -> None:
-    collection = create_random_artifact_collection(session=db)
-    artifact_create = ArtifactCreate(
-        name=random_lower_string(), collection_id=collection.id
-    )
-    assert collection.id
-    artifact = crud.create_artifact(
-        session=db,
-        artifact_collection_id=collection.id,
-        artifact_create=artifact_create,
-    )
-    db.delete(collection)
+    db.delete(plan)
     db.commit()
-    assert db.get(Artifact, artifact.id) is None
+    assert db.get(SBatchAnalysisSpec, spec.id) is None
