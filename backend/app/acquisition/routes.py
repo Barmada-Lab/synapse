@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Response, status
-from sqlmodel import func, select
 
 from app.core.deps import SessionDep
 from app.labware.models import Wellplate
@@ -8,9 +7,9 @@ from app.users.deps import CurrentActiveUserDep
 from . import crud
 from .events import emit_plateread_status_update
 from .models import (
+    Acquisition,
     AcquisitionPlan,
     AcquisitionPlanCreate,
-    AcquisitionPlanList,
     AcquisitionPlanRecord,
     PlatereadSpec,
     PlatereadSpecRecord,
@@ -20,41 +19,27 @@ from .models import (
 api_router = APIRouter(dependencies=[CurrentActiveUserDep])
 
 
-@api_router.get("/plans", response_model=AcquisitionPlanList)
-def list_acquisition_plans(
-    session: SessionDep, skip: int = 0, limit: int = 100, name: str | None = None
-) -> AcquisitionPlanList:
-    # TODO: make this betta
-    count_statement = select(func.count()).select_from(AcquisitionPlan)
-    if name is not None:
-        count_statement = count_statement.where(AcquisitionPlan.name == name)
-    count = session.exec(count_statement).one()
-
-    statement = select(AcquisitionPlan).offset(skip).limit(limit)
-    if name is not None:
-        statement = statement.where(AcquisitionPlan.name == name)
-    plans = session.exec(statement).all()
-    plan_records = [AcquisitionPlanRecord.model_validate(plan) for plan in plans]
-
-    return AcquisitionPlanList(data=plan_records, count=count)
-
-
 @api_router.post(
     "/plans", response_model=AcquisitionPlanRecord, status_code=status.HTTP_201_CREATED
 )
 def create_acquisition_plan(
     session: SessionDep, plan_create: AcquisitionPlanCreate
 ) -> AcquisitionPlanRecord:
-    plan = crud.get_acquisition_plan_by_name(session=session, name=plan_create.name)
-    if plan is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A plan with this name already exists.",
-        )
     if session.get(Wellplate, plan_create.wellplate_id) is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="No corresponding wellplate found.",
+        )
+    acquisition = session.get(Acquisition, plan_create.acquisition_id)
+    if acquisition is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No corresponding acquisition found.",
+        )
+    elif acquisition.acquisition_plan:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Acquisition already has an acquisition plan.",
         )
     plan = crud.create_acquisition_plan(session=session, plan_create=plan_create)
     return AcquisitionPlanRecord.model_validate(plan)
@@ -63,7 +48,7 @@ def create_acquisition_plan(
 @api_router.delete("/plans/{id}")
 def delete_acquisition_plan(session: SessionDep, id: int) -> Response:
     plan = session.get(AcquisitionPlan, id)
-    if plan is None:
+    if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found"
         )

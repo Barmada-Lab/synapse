@@ -8,7 +8,6 @@ from sqlmodel import Session
 from app.acquisition import crud
 from app.acquisition.crud import (
     create_acquisition_plan,
-    get_acquisition_plan_by_name,
     schedule_plan,
 )
 from app.acquisition.models import (
@@ -21,11 +20,12 @@ from app.acquisition.models import (
     ArtifactType,
     ImagingPriority,
     PlatereadSpecUpdate,
-    PlatereadStatus,
+    ProcessStatus,
     Repository,
 )
 from app.labware.models import Location, Wellplate
 from tests.acquisition.utils import (
+    create_random_acquisition,
     create_random_acquisition_plan,
     create_random_artifact_collection,
 )
@@ -36,7 +36,6 @@ from tests.utils import random_lower_string
 def test_create_acquisition_plan(db: Session) -> None:
     wellplate = create_random_wellplate(session=db)
 
-    name = random_lower_string()
     wellplate_id = wellplate.id
     storage_location = Location.CQ1
     protocol_name = random_lower_string()
@@ -44,8 +43,14 @@ def test_create_acquisition_plan(db: Session) -> None:
     interval = timedelta(minutes=1)
     priority = ImagingPriority.NORMAL
 
+    name = random_lower_string()
+    acquisition_create = AcquisitionCreate(name=name)
+    acquisition = crud.create_acquisition(
+        session=db, acquisition_create=acquisition_create
+    )
+
     plan_create = AcquisitionPlanCreate(
-        name=name,
+        acquisition_id=acquisition.id,
         wellplate_id=wellplate_id,
         storage_location=storage_location,
         protocol_name=protocol_name,
@@ -56,7 +61,6 @@ def test_create_acquisition_plan(db: Session) -> None:
 
     record = create_acquisition_plan(session=db, plan_create=plan_create)
 
-    assert record.name == name
     assert record.wellplate_id == wellplate_id
     assert record.storage_location == storage_location
     assert record.protocol_name == protocol_name
@@ -89,9 +93,8 @@ def test_create_acquisition_plan_with_negative_reads_fails(db: Session) -> None:
 
 
 def test_create_acquisition_plan_default_interval_is_zero(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
     wellplate = create_random_wellplate(session=db)
-
-    name = random_lower_string()
     wellplate_id = wellplate.id
     storage_location = Location.CQ1
     protocol_name = random_lower_string()
@@ -99,8 +102,8 @@ def test_create_acquisition_plan_default_interval_is_zero(db: Session) -> None:
     priority = ImagingPriority.NORMAL
 
     plan_create = AcquisitionPlanCreate(
-        name=name,
         wellplate_id=wellplate_id,
+        acquisition_id=acquisition.id,
         storage_location=storage_location,
         protocol_name=protocol_name,
         n_reads=n_reads,
@@ -112,9 +115,9 @@ def test_create_acquisition_plan_default_interval_is_zero(db: Session) -> None:
 
 
 def test_create_acquisition_plan_default_deadline_delta_is_zero(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
     wellplate = create_random_wellplate(session=db)
 
-    name = random_lower_string()
     wellplate_id = wellplate.id
     storage_location = Location.CQ1
     protocol_name = random_lower_string()
@@ -123,8 +126,8 @@ def test_create_acquisition_plan_default_deadline_delta_is_zero(db: Session) -> 
     priority = ImagingPriority.NORMAL
 
     plan_create = AcquisitionPlanCreate(
-        name=name,
         wellplate_id=wellplate_id,
+        acquisition_id=acquisition.id,
         storage_location=storage_location,
         protocol_name=protocol_name,
         n_reads=n_reads,
@@ -137,9 +140,9 @@ def test_create_acquisition_plan_default_deadline_delta_is_zero(db: Session) -> 
 
 
 def test_create_acquisition_plan_default_priority_is_normal(db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
     wellplate = create_random_wellplate(session=db)
 
-    name = random_lower_string()
     wellplate_id = wellplate.id
     storage_location = Location.CQ1
     protocol_name = random_lower_string()
@@ -147,8 +150,8 @@ def test_create_acquisition_plan_default_priority_is_normal(db: Session) -> None
     interval = timedelta(minutes=1)
 
     plan_create = AcquisitionPlanCreate(
-        name=name,
         wellplate_id=wellplate_id,
+        acquisition_id=acquisition.id,
         storage_location=storage_location,
         protocol_name=protocol_name,
         n_reads=n_reads,
@@ -159,13 +162,14 @@ def test_create_acquisition_plan_default_priority_is_normal(db: Session) -> None
     assert plan_create.priority == ImagingPriority.NORMAL
 
 
-def test_create_acquisition_plan_with_duplicate_name_raises_integrityerror(
+def test_create_acquisition_plan_with_duplicate_fk_raises_integrityerror(
     db: Session,
 ):
     plan_a = create_random_acquisition_plan(session=db)
     dump = plan_a.model_dump()
     with pytest.raises(IntegrityError):
-        create_random_acquisition_plan(session=db, **dump)
+        plan_create = AcquisitionPlanCreate.model_validate(dump)
+        crud.create_acquisition_plan(session=db, plan_create=plan_create)
     db.rollback()  # reset session state
 
     # isolate name as the cause
@@ -191,17 +195,6 @@ def test_delete_wellplate_associated_with_acquisition_plan_cascades_delete(
     assert db.get(AcquisitionPlan, plan.id) is None
 
 
-def test_get_acquisition_plan_by_name(db: Session) -> None:
-    plan_a = create_random_acquisition_plan(session=db)
-    plan_b = get_acquisition_plan_by_name(session=db, name=plan_a.name)
-    assert plan_b == plan_a
-
-
-def test_get_acquisition_plan_by_name_not_found(db: Session) -> None:
-    plan = get_acquisition_plan_by_name(session=db, name=random_lower_string())
-    assert plan is None
-
-
 def test_materialize_schedule(db: Session) -> None:
     plan = create_random_acquisition_plan(
         session=db,
@@ -211,7 +204,7 @@ def test_materialize_schedule(db: Session) -> None:
     )
     plan = schedule_plan(session=db, plan=plan)
     assert len(plan.schedule) == 2
-    assert all(r.status == PlatereadStatus.PENDING for r in plan.schedule)
+    assert all(r.status == ProcessStatus.PENDING for r in plan.schedule)
 
     t0 = plan.schedule[0]
     t1 = plan.schedule[1]
@@ -224,11 +217,11 @@ def test_update_plateread(db: Session) -> None:
     plan = schedule_plan(session=db, plan=plan)
 
     plateread = plan.schedule[0]
-    plateread_in = PlatereadSpecUpdate(status=PlatereadStatus.COMPLETED)
+    plateread_in = PlatereadSpecUpdate(status=ProcessStatus.COMPLETED)
     updated = crud.update_plateread(
         session=db, db_plateread=plateread, plateread_in=plateread_in
     )
-    assert updated.status == PlatereadStatus.COMPLETED
+    assert updated.status == ProcessStatus.COMPLETED
 
 
 def test_create_acquisition(db: Session) -> None:
@@ -351,6 +344,7 @@ def test_create_artifact(db: Session) -> None:
     artifact_create = ArtifactCreate(
         name=random_lower_string(), collection_id=collection.id
     )
+    assert collection.id
     crud.create_artifact(
         session=db,
         artifact_collection_id=collection.id,
@@ -363,6 +357,7 @@ def test_delete_artifact_cascade_from_artifact_collection_delete(db: Session) ->
     artifact_create = ArtifactCreate(
         name=random_lower_string(), collection_id=collection.id
     )
+    assert collection.id
     artifact = crud.create_artifact(
         session=db,
         artifact_collection_id=collection.id,

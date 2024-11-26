@@ -4,58 +4,27 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.acquisition.crud import get_acquisition_plan_by_name, schedule_plan
+from app.acquisition.crud import schedule_plan
 from app.acquisition.models import (
+    AcquisitionPlan,
     AcquisitionPlanCreate,
-    AcquisitionPlanRecord,
 )
 from app.core.config import settings
 from app.labware.models import Location
-from tests.acquisition.utils import create_random_acquisition_plan
+from tests.acquisition.utils import (
+    create_random_acquisition,
+    create_random_acquisition_plan,
+)
 from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
 
 
-def test_list_plans(pw_authenticated_client: TestClient, db: Session) -> None:
-    _ = create_random_acquisition_plan(session=db)
-
-    response = pw_authenticated_client.get(f"{settings.API_V1_STR}/acquisition/plans/")
-    assert response.status_code == status.HTTP_200_OK
-    all_plans = response.json()
-
-    assert all_plans["count"] >= 1
-    for item in all_plans["data"]:
-        AcquisitionPlanRecord.model_validate(item)
-
-
-def test_query_plan_by_name(pw_authenticated_client: TestClient, db: Session) -> None:
-    plan = create_random_acquisition_plan(session=db)
-    response = pw_authenticated_client.get(
-        f"{settings.API_V1_STR}/acquisition/plans",
-        params={"name": plan.name},
-    )
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()["data"]
-    assert len(data) == 1
-    assert response.json()["count"] == 1
-    assert data[0]["name"] == plan.name
-
-
-def test_get_plan_by_name_not_found(pw_authenticated_client: TestClient) -> None:
-    response = pw_authenticated_client.get(
-        f"{settings.API_V1_STR}/acquisition/plans/",
-        params={"name": random_lower_string()},
-    )
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json()["count"] == 0
-    assert response.json()["data"] == []
-
-
 def test_create_plan(pw_authenticated_client: TestClient, db: Session) -> None:
     wellplate = create_random_wellplate(session=db)
+    acquisition = create_random_acquisition(session=db)
     json = AcquisitionPlanCreate(
-        name=random_lower_string(),
         wellplate_id=wellplate.id,
+        acquisition_id=acquisition.id,
         storage_location=Location.CQ1,
         protocol_name=random_lower_string(),
         n_reads=1,
@@ -68,7 +37,7 @@ def test_create_plan(pw_authenticated_client: TestClient, db: Session) -> None:
     data = response.json()
 
     # a corresponding record should appear in the database
-    plan = get_acquisition_plan_by_name(session=db, name=data["name"])
+    plan = db.get(AcquisitionPlan, data["id"])
     assert plan is not None
 
 
@@ -81,13 +50,16 @@ def test_create_plan_duplicate_returns_400(
         json=plan_a.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json()["detail"] == "A plan with this name already exists."
+    assert response.json()["detail"] == "Acquisition already has an acquisition plan."
 
 
-def test_create_plan_invalid_wellplate_id(pw_authenticated_client: TestClient) -> None:
+def test_create_plan_invalid_wellplate_id(
+    pw_authenticated_client: TestClient, db: Session
+) -> None:
+    acquisition = create_random_acquisition(session=db)
     json = AcquisitionPlanCreate(
-        name=random_lower_string(),
         wellplate_id=2**16,
+        acquisition_id=acquisition.id,
         storage_location=Location.CQ1,
         protocol_name=random_lower_string(),
         n_reads=1,
@@ -100,6 +72,25 @@ def test_create_plan_invalid_wellplate_id(pw_authenticated_client: TestClient) -
     assert response.json()["detail"] == "No corresponding wellplate found."
 
 
+def test_create_plan_invalid_acquisition_id(
+    pw_authenticated_client: TestClient, db: Session
+) -> None:
+    wellplate = create_random_wellplate(session=db)
+    json = AcquisitionPlanCreate(
+        wellplate_id=wellplate.id,
+        acquisition_id=2**16,
+        storage_location=Location.CQ1,
+        protocol_name=random_lower_string(),
+        n_reads=1,
+    ).model_dump(mode="json")
+    response = pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/acquisition/plans/",
+        json=json,
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json()["detail"] == "No corresponding acquisition found."
+
+
 def test_delete_plan_by_id(pw_authenticated_client: TestClient, db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
     response = pw_authenticated_client.delete(
@@ -108,7 +99,8 @@ def test_delete_plan_by_id(pw_authenticated_client: TestClient, db: Session) -> 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # the plan should be deleted from the database
-    assert get_acquisition_plan_by_name(session=db, name=plan.name) is None
+    db.reset()  # reset to session cache
+    assert db.get(AcquisitionPlan, plan.id) is None
 
 
 def test_delete_plan_by_id_not_found(pw_authenticated_client: TestClient) -> None:
@@ -160,18 +152,14 @@ def test_update_plateread_no_change(
         mock.assert_not_called()
 
 
-def test_list_plans_requires_authentication(unauthenticated_client: TestClient) -> None:
-    response = unauthenticated_client.get(f"{settings.API_V1_STR}/acquisition/plans/")
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
 def test_create_plan_requires_authentication(
     unauthenticated_client: TestClient, db: Session
 ) -> None:
     wellplate = create_random_wellplate(session=db)
+    acquisition = create_random_acquisition(session=db)
     json = AcquisitionPlanCreate(
-        name=random_lower_string(),
         wellplate_id=wellplate.id,
+        acquisition_id=acquisition.id,
         storage_location=Location.CQ1,
         protocol_name=random_lower_string(),
         n_reads=1,

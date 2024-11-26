@@ -81,7 +81,7 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
             parameters=OverlordBatchParams(
                 wellplate_barcode=plan.wellplate.name,
                 plateread_id=spec.id,  # type: ignore
-                acquisition_name=plan.name,
+                acquisition_name=plan.acquisition.name,
                 labware_type="96",
                 plate_location_start=storage_loc,
                 scans_per_plate=1,

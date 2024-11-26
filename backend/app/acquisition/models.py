@@ -8,7 +8,7 @@ from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 from app.labware.models import Location, Wellplate
 
 
-class PlatereadStatus(str, enum.Enum):
+class ProcessStatus(str, enum.Enum):
     PENDING = "PENDING"
     SCHEDULED = "SCHEDULED"
     RUNNING = "RUNNING"
@@ -28,7 +28,6 @@ class ImagingPriority(str, enum.Enum):
 
 
 class AcquisitionPlanBase(SQLModel):
-    name: str = Field(unique=True, index=True, min_length=1, max_length=255)
     wellplate_id: int = Field(foreign_key="wellplate.id", ondelete="CASCADE")
     storage_location: Location
     protocol_name: str = Field(max_length=255)
@@ -57,9 +56,10 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         back_populates="acquisition_plan", cascade_delete=True
     )
 
-    # using Optional["AcquisitionArtifact"] because declaring
-    # "AcquisitionArtifact" | None results in a TypeError
-    acquisition: Optional["Acquisition"] = Relationship(
+    acquisition_id: int = Field(
+        foreign_key="acquisition.id", ondelete="CASCADE", unique=True
+    )
+    acquisition: "Acquisition" = Relationship(
         back_populates="acquisition_plan",
     )
 
@@ -71,7 +71,7 @@ class AcquisitionPlanRecord(AcquisitionPlanBase):
 
 
 class AcquisitionPlanCreate(AcquisitionPlanBase):
-    pass
+    acquisition_id: int
 
 
 class AcquisitionPlanList(SQLModel):
@@ -86,9 +86,9 @@ class AcquisitionPlanList(SQLModel):
 class PlatereadSpecBase(SQLModel):
     start_after: datetime
     deadline: datetime | None
-    status: PlatereadStatus = Field(
-        sa_column=Column(Enum(PlatereadStatus), nullable=False),
-        default=PlatereadStatus.PENDING,
+    status: ProcessStatus = Field(
+        sa_column=Column(Enum(ProcessStatus), nullable=False),
+        default=ProcessStatus.PENDING,
     )
 
 
@@ -106,7 +106,7 @@ class PlatereadSpecRecord(PlatereadSpecBase):
 
 
 class PlatereadSpecUpdate(SQLModel):
-    status: PlatereadStatus
+    status: ProcessStatus
 
 
 #################################################################################
@@ -131,14 +131,16 @@ class Acquisition(AcquisitionBase, table=True):
         back_populates="acquisition", cascade_delete=True
     )
 
-    acquisition_plan_id: int | None = Field(foreign_key="acquisitionplan.id")
     acquisition_plan: Optional["AcquisitionPlan"] = Relationship(
-        back_populates="acquisition"
+        back_populates="acquisition", cascade_delete=True
+    )
+    analysis_plan: Optional["AnalysisPlan"] = Relationship(
+        back_populates="acquisition", cascade_delete=True
     )
 
 
 class AcquisitionCreate(AcquisitionBase):
-    acquisition_plan_id: int | None = None
+    pass
 
 
 class AcquisitionRecord(AcquisitionBase):
@@ -220,3 +222,37 @@ class ArtifactCreate(ArtifactBase):
 
 class ArtifactRecord(ArtifactBase):
     id: int
+
+
+#################################################################################
+# AnalysisPlan model
+# ---
+# An AnalysisPlan represents a set of instructions for processing and analyzing
+# data. It is associated with an Acquisition.
+#################################################################################
+
+
+class AnalysisPlan(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    acquisition_id: int = Field(
+        foreign_key="acquisition.id", ondelete="CASCADE", unique=True
+    )
+    acquisition: Acquisition = Relationship(back_populates="analysis_plan")
+    sbatch_analyses: list["SBatchAnalysisSpec"] = Relationship(
+        back_populates="analysis_plan", cascade_delete=True
+    )
+
+
+class SBatchAnalysisSpec(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    analysis_status: ProcessStatus = Field(
+        sa_column=Column(Enum(ProcessStatus), nullable=False),
+        default=ProcessStatus.PENDING,
+    )
+    analysis_cmd: str = Field(max_length=255)
+    analysis_args: list[str] = Field(
+        sa_column=Column(sa.ARRAY(sa.String), nullable=False), default_factory=list
+    )
+
+    analysis_plan_id: int = Field(foreign_key="analysisplan.id", ondelete="CASCADE")
+    analysis_plan: AnalysisPlan = Relationship(back_populates="sbatch_analyses")

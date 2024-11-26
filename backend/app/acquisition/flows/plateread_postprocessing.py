@@ -12,7 +12,7 @@ from pydantic import DirectoryPath
 from app.acquisition.events import PLATEREAD_RESOURCE_REGEX
 from app.acquisition.models import (
     PlatereadSpec,
-    PlatereadStatus,
+    ProcessStatus,
 )
 from app.common.errors import AggregateError
 from app.common.proc import run_subproc_async
@@ -140,7 +140,7 @@ async def post_plateread_handler(resource_id: str, before: str):
         raise ValueError(f"Invalid plateread resource id: {resource_id}")
 
     plateread_id = int(match.group("plateread_id"))
-    before = PlatereadStatus(before)
+    before = ProcessStatus(before)
 
     with get_db() as session:
         if not (plateread := session.get(PlatereadSpec, plateread_id)):
@@ -149,9 +149,9 @@ async def post_plateread_handler(resource_id: str, before: str):
         acquisition_name = plateread.acquisition_plan.name
 
     match (before, plateread.status):
-        case (PlatereadStatus.RUNNING, PlatereadStatus.COMPLETED):
+        case (ProcessStatus.RUNNING, ProcessStatus.COMPLETED):
             if all(
-                spec.status == PlatereadStatus.COMPLETED
+                spec.status == ProcessStatus.COMPLETED
                 for spec in plateread.acquisition_plan.schedule
             ):
                 await handle_post_acquisition(acquisition_name)

@@ -34,13 +34,6 @@ def create_acquisition_plan(
     return acquisition_plan
 
 
-def get_acquisition_plan_by_name(
-    *, session: Session, name: str
-) -> AcquisitionPlan | None:
-    stmt = select(AcquisitionPlan).where(AcquisitionPlan.name == name)
-    return session.exec(stmt).first()
-
-
 def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
     start_time = datetime.now()
     for i in range(plan.n_reads):
