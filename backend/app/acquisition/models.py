@@ -23,90 +23,20 @@ class ImagingPriority(str, enum.Enum):
     LOW = "LOW"
 
 
-### Acquisition Plan
-################################################
+class Repository(str, enum.Enum):
+    ACQUISITION = "ACQUISITION"
+    ARCHIVE = "ARCHIVE"
+    ANALYSIS = "ANALYSIS"
 
 
-class AcquisitionPlanBase(SQLModel):
-    wellplate_id: int = Field(foreign_key="wellplate.id", ondelete="CASCADE")
-    storage_location: Location
-    protocol_name: str = Field(max_length=255)
-    n_reads: int = Field(ge=1)
-    interval: timedelta = Field(default=timedelta(days=0))
-    deadline_delta: timedelta = Field(default=timedelta(days=0))
-    priority: ImagingPriority = ImagingPriority.NORMAL
+class ArtifactType(str, enum.Enum):
+    ACQUISITION = "ACQUISITION"
+    ANALYSIS = "ANALYSIS"
 
 
-# table
-class AcquisitionPlan(AcquisitionPlanBase, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-
-    wellplate: Wellplate = Relationship(back_populates="acquisition_plans")
-
-    protocol_name: str = Field(max_length=255)
-    n_reads: int
-
-    storage_location: Location = Field(sa_column=Column(Enum(Location), nullable=False))
-    priority: ImagingPriority = Field(
-        sa_column=Column(Enum(ImagingPriority), nullable=False),
-        default=ImagingPriority.NORMAL,
-    )
-
-    schedule: list["PlatereadSpec"] = Relationship(
-        back_populates="acquisition_plan", cascade_delete=True
-    )
-
-    acquisition_id: int = Field(
-        foreign_key="acquisition.id", ondelete="CASCADE", unique=True
-    )
-    acquisition: "Acquisition" = Relationship(
-        back_populates="acquisition_plan",
-    )
-
-
-# read
-class AcquisitionPlanRecord(AcquisitionPlanBase):
-    id: int
-    schedule: list["PlatereadSpecRecord"] = []
-
-
-class AcquisitionPlanCreate(AcquisitionPlanBase):
-    acquisition_id: int
-
-
-class AcquisitionPlanList(SQLModel):
-    data: list[AcquisitionPlanRecord]
-    count: int
-
-
-### Plate Read
-################################################
-
-
-class PlatereadSpecBase(SQLModel):
-    start_after: datetime
-    deadline: datetime | None
-    status: ProcessStatus = Field(
-        sa_column=Column(Enum(ProcessStatus), nullable=False),
-        default=ProcessStatus.PENDING,
-    )
-
-
-class PlatereadSpec(PlatereadSpecBase, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-
-    acquisition_plan_id: int = Field(
-        foreign_key="acquisitionplan.id", ondelete="CASCADE"
-    )
-    acquisition_plan: AcquisitionPlan = Relationship(back_populates="schedule")
-
-
-class PlatereadSpecRecord(PlatereadSpecBase):
-    id: int
-
-
-class PlatereadSpecUpdate(SQLModel):
-    status: ProcessStatus
+class AnalysisTrigger(str, enum.Enum):
+    POST_ACQUISTION = "POST_ACQUISITION"
+    POST_READ = "POST_READ"
 
 
 #################################################################################
@@ -159,17 +89,6 @@ class AcquisitionRecord(AcquisitionBase):
 #################################################################################
 
 
-class Repository(str, enum.Enum):
-    ACQUISITION = "ACQUISITION"
-    ARCHIVE = "ARCHIVE"
-    ANALYSIS = "ANALYSIS"
-
-
-class ArtifactType(str, enum.Enum):
-    ACQUISITION = "ACQUISITION"
-    ANALYSIS = "ANALYSIS"
-
-
 class ArtifactCollectionBase(SQLModel):
     location: Repository = Field(sa_column=Column(Enum(Repository), nullable=False))
     artifact_type: ArtifactType = Field(
@@ -189,7 +108,7 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     acquisition_id: int = Field(foreign_key="acquisition.id", ondelete="CASCADE")
-    acquisition: "Acquisition" = Relationship(back_populates="collections")
+    acquisition: Acquisition = Relationship(back_populates="collections")
 
     artifacts: list["Artifact"] = Relationship(
         back_populates="collection", cascade_delete=True
@@ -234,6 +153,94 @@ class ArtifactRecord(ArtifactBase):
 
 
 #################################################################################
+# Acquisition Plan
+# ---
+#################################################################################
+
+
+class AcquisitionPlanBase(SQLModel):
+    wellplate_id: int = Field(foreign_key="wellplate.id", ondelete="CASCADE")
+    storage_location: Location
+    protocol_name: str = Field(max_length=255)
+    n_reads: int = Field(ge=1)
+    interval: timedelta = Field(default=timedelta(days=0))
+    deadline_delta: timedelta = Field(default=timedelta(days=0))
+    priority: ImagingPriority = ImagingPriority.NORMAL
+
+
+class AcquisitionPlan(AcquisitionPlanBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+    wellplate: Wellplate = Relationship(back_populates="acquisition_plans")
+
+    protocol_name: str = Field(max_length=255)
+    n_reads: int
+
+    storage_location: Location = Field(sa_column=Column(Enum(Location), nullable=False))
+    priority: ImagingPriority = Field(
+        sa_column=Column(Enum(ImagingPriority), nullable=False),
+        default=ImagingPriority.NORMAL,
+    )
+
+    schedule: list["PlatereadSpec"] = Relationship(
+        back_populates="acquisition_plan", cascade_delete=True
+    )
+
+    acquisition_id: int = Field(
+        foreign_key="acquisition.id", ondelete="CASCADE", unique=True
+    )
+    acquisition: Acquisition = Relationship(
+        back_populates="acquisition_plan",
+    )
+
+
+class AcquisitionPlanRecord(AcquisitionPlanBase):
+    id: int
+    schedule: list["PlatereadSpecRecord"] = []
+
+
+class AcquisitionPlanCreate(AcquisitionPlanBase):
+    acquisition_id: int
+
+
+class AcquisitionPlanList(SQLModel):
+    data: list[AcquisitionPlanRecord]
+    count: int
+
+
+#################################################################################
+# PlatereadSpec
+# ---
+#################################################################################
+
+
+class PlatereadSpecBase(SQLModel):
+    start_after: datetime
+    deadline: datetime | None
+    status: ProcessStatus = Field(
+        sa_column=Column(Enum(ProcessStatus), nullable=False),
+        default=ProcessStatus.PENDING,
+    )
+
+
+class PlatereadSpec(PlatereadSpecBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+    acquisition_plan_id: int = Field(
+        foreign_key="acquisitionplan.id", ondelete="CASCADE"
+    )
+    acquisition_plan: AcquisitionPlan = Relationship(back_populates="schedule")
+
+
+class PlatereadSpecRecord(PlatereadSpecBase):
+    id: int
+
+
+class PlatereadSpecUpdate(SQLModel):
+    status: ProcessStatus
+
+
+#################################################################################
 # AnalysisPlan model
 # ---
 # An AnalysisPlan represents a set of instructions for processing and analyzing
@@ -250,11 +257,6 @@ class AnalysisPlan(SQLModel, table=True):
     sbatch_analyses: list["SBatchAnalysisSpec"] = Relationship(
         back_populates="analysis_plan", cascade_delete=True
     )
-
-
-class AnalysisTrigger(str, enum.Enum):
-    POST_ACQUISTION = "POST_ACQUISITION"
-    POST_READ = "POST_READ"
 
 
 class SBatchAnalysisSpec(SQLModel, table=True):
