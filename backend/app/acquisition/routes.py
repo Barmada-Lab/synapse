@@ -58,6 +58,18 @@ def create_acquisition(
     return AcquisitionRecord.model_validate(acquisition)
 
 
+@api_router.delete("/acquisitions/{id}")
+def delete_acquisition(session: SessionDep, id: int) -> Response:
+    acquisition = session.get(Acquisition, id)
+    if not acquisition:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Acquisition not found."
+        )
+    session.delete(acquisition)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @api_router.post(
     "/analysis_plans",
     response_model=AnalysisPlanRecord,

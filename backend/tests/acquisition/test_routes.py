@@ -6,6 +6,7 @@ from sqlmodel import Session
 
 from app.acquisition.crud import create_analysis_spec, schedule_plan
 from app.acquisition.models import (
+    Acquisition,
     AcquisitionCreate,
     AcquisitionPlan,
     AcquisitionPlanCreate,
@@ -77,6 +78,26 @@ def test_create_acquisition_requires_authentication(
         json=acquisition_create.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_delete_acquisition(pw_authenticated_client: TestClient, db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    response = pw_authenticated_client.delete(
+        f"{settings.API_V1_STR}/acquisitions/{acquisition.id}",
+    )
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    # the acquisition should be deleted from the database
+    db.reset()  # reset to session cache
+    assert db.get(Acquisition, acquisition.id) is None
+
+
+def test_delete_acquisition_not_found(pw_authenticated_client: TestClient) -> None:
+    response = pw_authenticated_client.delete(
+        f"{settings.API_V1_STR}/acquisitions/{2**16}",
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json()["detail"] == "Acquisition not found."
 
 
 def test_create_analysis_plan(pw_authenticated_client: TestClient, db: Session) -> None:
