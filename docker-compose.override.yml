@@ -86,7 +86,7 @@ services:
       SMTP_TLS: "false"
       EMAILS_FROM_EMAIL: "noreply@example.com"
 
-  worker:
+  flow-worker:
     develop:
       watch:
         - path: ./backend

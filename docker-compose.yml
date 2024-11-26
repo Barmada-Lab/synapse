@@ -152,10 +152,10 @@ services:
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-backend-http.middlewares=https-redirect
 
-  worker:
+  flow-worker:
     build:
       context: ./backend
-      dockerfile: worker.Dockerfile
+      dockerfile: flow-worker.Dockerfile
     restart: always
     networks:
       - default
@@ -198,7 +198,7 @@ services:
   task-worker:
     build:
       context: ./backend
-      dockerfile: task_worker.Dockerfile
+      dockerfile: task-worker.Dockerfile
     restart: always
     networks:
       - traefik-public
