@@ -181,8 +181,9 @@ def test_create_acquisition_plan_with_invalid_wellplate_id_raises_value_error(
     db: Session,
 ) -> None:
     assert db.get(Wellplate, 2**16) is None  # no such wellplate
-    with pytest.raises(ValueError):
+    with pytest.raises(IntegrityError):
         create_random_acquisition_plan(session=db, wellplate_id=2**16)
+    db.rollback()
 
 
 def test_delete_wellplate_associated_with_acquisition_plan_cascades_delete(
@@ -278,7 +279,9 @@ def test_create_artifact_collection(db: Session) -> None:
     )
 
     artifact = crud.create_artifact_collection(
-        session=db, artifact_collection_create=artifact_collection_create
+        session=db,
+        acquisition_id=acquisition_id,
+        artifact_collection_create=artifact_collection_create,
     )
     assert artifact.location == location
     assert artifact.artifact_type == artifact_type
@@ -296,11 +299,14 @@ def test_create_artifact_collection_invalid_acquisition_id(db: Session) -> None:
         acquisition_id=acquisition_id,
     )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(IntegrityError) as e:
         crud.create_artifact_collection(
-            session=db, artifact_collection_create=artifact_collection_create
+            session=db,
+            acquisition_id=acquisition_id,
+            artifact_collection_create=artifact_collection_create,
         )
         assert "Acquisition not found" in str(e)
+    db.rollback()
 
 
 def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
@@ -320,13 +326,17 @@ def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
     )
 
     _ = crud.create_artifact_collection(
-        session=db, artifact_collection_create=artifact_collection_create
+        session=db,
+        acquisition_id=acquisition_id,  # type: ignore
+        artifact_collection_create=artifact_collection_create,
     )
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(IntegrityError):
         crud.create_artifact_collection(
-            session=db, artifact_collection_create=artifact_collection_create
+            session=db,
+            acquisition_id=acquisition_id,  # type: ignore
+            artifact_collection_create=artifact_collection_create,
         )
-        assert "Duplicate artifact collection" in str(e)
+    db.rollback()
 
 
 def test_get_artifact_collection_by_key(db: Session) -> None:

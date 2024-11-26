@@ -78,5 +78,7 @@ def create_random_artifact_collection(
         acquisition_id=acquisition.id, **kwargs
     )
     return create_artifact_collection(
-        session=session, artifact_collection_create=artifact_collection_create
+        session=session,
+        acquisition_id=acquisition.id,  # type: ignore
+        artifact_collection_create=artifact_collection_create,
     )

@@ -195,9 +195,18 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
         back_populates="collection", cascade_delete=True
     )
 
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "acquisition_id",
+            "artifact_type",
+            "location",
+            name="unique_acquisition_collection",
+        ),
+    )
+
 
 class ArtifactCollectionCreate(ArtifactCollectionBase):
-    acquisition_id: int
+    pass
 
 
 class ArtifactCollectionRecord(ArtifactCollectionBase):
