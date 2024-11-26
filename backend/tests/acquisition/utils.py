@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.acquisition.crud import (
     create_acquisition,
     create_acquisition_plan,
+    create_analysis_plan,
     create_artifact_collection,
 )
 from app.acquisition.models import (
@@ -13,6 +14,7 @@ from app.acquisition.models import (
     AcquisitionCreate,
     AcquisitionPlan,
     AcquisitionPlanCreate,
+    AnalysisPlan,
     ArtifactCollection,
     ArtifactCollectionCreate,
     ArtifactType,
@@ -28,6 +30,14 @@ def create_random_acquisition(*, session: Session, **kwargs) -> Acquisition:
     kwargs.setdefault("name", random_lower_string())
     acquisition_create = AcquisitionCreate(name=kwargs["name"])
     return create_acquisition(session=session, acquisition_create=acquisition_create)
+
+
+def create_random_analysis_plan(*, session: Session) -> AnalysisPlan:
+    acquisition = create_random_acquisition(session=session)
+    return create_analysis_plan(
+        session=session,
+        acquisition_id=acquisition.id,  # type: ignore
+    )
 
 
 def create_random_acquisition_plan(

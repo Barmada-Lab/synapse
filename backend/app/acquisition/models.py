@@ -79,6 +79,11 @@ class AcquisitionRecord(AcquisitionBase):
     acquisition_plan: Optional["AcquisitionPlan"] = None
 
 
+class AcquisitionList(SQLModel):
+    data: list[AcquisitionRecord]
+    count: int
+
+
 #################################################################################
 # ArtifactCollection model
 # ---
@@ -259,6 +264,15 @@ class AnalysisPlan(SQLModel, table=True):
     )
 
 
+class AnalysisPlanCreate(SQLModel):
+    acquisition_id: int
+
+
+class AnalysisPlanRecord(SQLModel):
+    id: int
+    sbatch_analyses: list["SBatchAnalysisSpecRecord"]
+
+
 class SBatchAnalysisSpecBase(SQLModel):
     trigger: AnalysisTrigger
     trigger_value: int | None = None
@@ -287,7 +301,7 @@ class SBatchAnalysisSpec(SBatchAnalysisSpecBase, table=True):
 
 
 class SBatchAnalysisSpecCreate(SBatchAnalysisSpecBase):
-    pass
+    analysis_plan_id: int
 
 
 class SBatchAnalysisSpecRecord(SBatchAnalysisSpecBase):
