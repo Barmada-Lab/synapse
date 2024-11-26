@@ -58,11 +58,6 @@ class UsersPublic(SQLModel):
     count: int
 
 
-# Generic message
-class Message(SQLModel):
-    message: str
-
-
 # JSON payload containing access token
 class Token(SQLModel):
     access_token: str

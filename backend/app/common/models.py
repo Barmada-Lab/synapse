@@ -1,5 +1,5 @@
-from sqlmodel import Field, SQLModel
+from sqlmodel import SQLModel
 
 
 class Message(SQLModel):
-    content: str = Field(max_length=1024)
+    message: str

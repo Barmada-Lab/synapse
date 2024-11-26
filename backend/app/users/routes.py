@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic.networks import EmailStr
 from sqlmodel import func, select
 
+from app.common.models import Message
 from app.core import security
 from app.core.config import settings
 from app.core.deps import SessionDep
@@ -21,7 +22,6 @@ from app.users.models import (
     ApplicationCreate,
     ApplicationKey,
     ListApplications,
-    Message,
     Token,
     UpdatePassword,
     User,
