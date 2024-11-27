@@ -26,6 +26,7 @@ from app.acquisition.models import (
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
     SBatchAnalysisSpecUpdate,
+    SlurmJobStatus,
 )
 from app.labware.models import Location, Wellplate
 from tests.acquisition.utils import (
@@ -408,12 +409,11 @@ def test_create_analysis_spec(db: Session) -> None:
         trigger=AnalysisTrigger.POST_ACQUISTION,
         analysis_cmd="echo",
         analysis_args=["hello"],
+        analysis_plan_id=plan.id,
     )
-    spec = crud.create_analysis_spec(
-        session=db, analysis_plan_id=plan.id, create=spec_create
-    )
+    spec = crud.create_analysis_spec(session=db, create=spec_create)
     assert spec.analysis_plan_id == plan.id
-    assert spec.analysis_status == ProcessStatus.PENDING
+    assert spec.status == SlurmJobStatus.UNSUBMITTED
 
 
 def test_delete_analysis_spec(db: Session) -> None:
@@ -425,33 +425,21 @@ def test_delete_analysis_spec(db: Session) -> None:
         trigger=AnalysisTrigger.POST_ACQUISTION,
         analysis_cmd="echo",
         analysis_args=["hello"],
+        analysis_plan_id=plan.id,
     )
-    spec = crud.create_analysis_spec(
-        session=db, analysis_plan_id=plan.id, create=spec_create
-    )
+    spec = crud.create_analysis_spec(session=db, create=spec_create)
     db.delete(spec)
 
 
 def test_delete_analysis_plan_cascades_delete(db: Session) -> None:
-    acquisition = create_random_acquisition(session=db)
-    assert acquisition.id
-    plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
-    assert plan.id
-    spec_create = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
-        analysis_cmd="echo",
-        analysis_args=["hello"],
-    )
-    spec = crud.create_analysis_spec(
-        session=db, analysis_plan_id=plan.id, create=spec_create
-    )
-    db.delete(plan)
+    spec = create_random_analysis_spec(session=db)
+    db.delete(spec.analysis_plan)
     db.commit()
     assert db.get(SBatchAnalysisSpec, spec.id) is None
 
 
 def test_update_analysis_spec(db: Session) -> None:
     spec = create_random_analysis_spec(session=db)
-    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
     updated = crud.update_analysis_spec(session=db, db_analysis=spec, update=update)
-    assert updated.analysis_status == ProcessStatus.COMPLETED
+    assert updated.status == SlurmJobStatus.COMPLETED

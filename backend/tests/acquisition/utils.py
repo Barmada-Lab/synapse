@@ -54,7 +54,6 @@ def create_random_analysis_spec(*, session: Session) -> SBatchAnalysisSpec:
     )
     return create_analysis_spec(
         session=session,
-        analysis_plan_id=analysis_plan.id,  # type: ignore
         create=analysis_create,
     )
 

@@ -152,11 +152,9 @@ def create_analysis_plan(*, session: Session, acquisition_id: int) -> AnalysisPl
 
 
 def create_analysis_spec(
-    *, session: Session, analysis_plan_id: int, create: SBatchAnalysisSpecCreate
+    *, session: Session, create: SBatchAnalysisSpecCreate
 ) -> SBatchAnalysisSpec:
-    analysis = SBatchAnalysisSpec.model_validate(
-        create, update={"analysis_plan_id": analysis_plan_id}
-    )
+    analysis = SBatchAnalysisSpec.model_validate(create)
     session.add(analysis)
     session.commit()
     session.refresh(analysis)

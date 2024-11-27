@@ -18,6 +18,17 @@ class ProcessStatus(str, enum.Enum):
     RESET = "RESET"
 
 
+class SlurmJobStatus(str, enum.Enum):
+    UNSUBMITTED = "UNSUBMITTED"
+    COMPLETED = "COMPLETED"
+    COMPLETING = "COMPLETING"
+    PENDING = "PENDING"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
+    RUNNING = "RUNNING"
+    UNHANDLED = "UNHANDLED"
+
+
 class ImagingPriority(str, enum.Enum):
     NORMAL = "NORMAL"
     LOW = "LOW"
@@ -287,9 +298,9 @@ class SBatchAnalysisSpec(SBatchAnalysisSpecBase, table=True):
     )
     trigger_value: int | None
 
-    analysis_status: ProcessStatus = Field(
-        sa_column=Column(Enum(ProcessStatus), nullable=False),
-        default=ProcessStatus.PENDING,
+    status: SlurmJobStatus = Field(
+        sa_column=Column(Enum(SlurmJobStatus), nullable=False),
+        default=SlurmJobStatus.UNSUBMITTED,
     )
     analysis_cmd: str = Field(max_length=255)
     analysis_args: list[str] = Field(
@@ -306,8 +317,8 @@ class SBatchAnalysisSpecCreate(SBatchAnalysisSpecBase):
 
 class SBatchAnalysisSpecRecord(SBatchAnalysisSpecBase):
     id: int
-    analysis_status: ProcessStatus
+    status: SlurmJobStatus
 
 
 class SBatchAnalysisSpecUpdate(SQLModel):
-    analysis_status: ProcessStatus
+    status: SlurmJobStatus

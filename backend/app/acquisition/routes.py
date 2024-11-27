@@ -100,7 +100,7 @@ def delete_analysis_plan(session: SessionDep, id: int) -> Response:
     analysis_plan = session.get(AnalysisPlan, id)
     if not analysis_plan:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis plan not found."
         )
     session.delete(analysis_plan)
     session.commit()
@@ -119,40 +119,41 @@ def create_sbatch_analysis_spec(
     analysis_plan = session.get(AnalysisPlan, analysis_plan_id)
     if analysis_plan is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found."
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Analysis plan not found.",
         )
-    spec = crud.create_analysis_spec(
-        session=session, analysis_plan_id=analysis_plan_id, create=spec_create
-    )
+    spec = crud.create_analysis_spec(session=session, create=spec_create)
     return SBatchAnalysisSpecRecord.model_validate(spec)
 
 
 @api_router.patch(
-    "/analyses/{id}",
+    "/analyses/{analysis_id}",
     response_model=SBatchAnalysisSpecRecord,
 )
 def update_sbatch_analysis_spec(
-    *, session: SessionDep, id: int, update: SBatchAnalysisSpecUpdate
+    *, session: SessionDep, analysis_id: int, update: SBatchAnalysisSpecUpdate
 ) -> SBatchAnalysisSpecRecord:
-    analysis_spec = session.get(SBatchAnalysisSpec, id)
-    if analysis_spec is None:
+    analysis = session.get(SBatchAnalysisSpec, analysis_id)
+    if analysis is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis spec not found."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis specification not found.",
         )
     updated = crud.update_analysis_spec(
-        session=session, db_analysis=analysis_spec, update=update
+        session=session, db_analysis=analysis, update=update
     )
     return SBatchAnalysisSpecRecord.model_validate(updated)
 
 
-@api_router.delete("/analyses/{id}")
-def delete_sbatch_analysis_spec(session: SessionDep, id: int) -> Response:
-    spec = session.get(SBatchAnalysisSpec, id)
-    if not spec:
+@api_router.delete("/analyses/{analysis_id}")
+def delete_sbatch_analysis_spec(session: SessionDep, analysis_id: int) -> Response:
+    analysis = session.get(SBatchAnalysisSpec, analysis_id)
+    if not analysis:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Spec not found."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis specification not found.",
         )
-    session.delete(spec)
+    session.delete(analysis)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

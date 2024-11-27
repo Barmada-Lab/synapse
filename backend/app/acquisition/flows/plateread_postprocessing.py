@@ -146,7 +146,7 @@ async def post_plateread_handler(resource_id: str, before: str):
         if not (plateread := session.get(PlatereadSpec, plateread_id)):
             raise ValueError(f"Plateread {plateread_id} not found")
 
-        acquisition_name = plateread.acquisition_plan.name
+        acquisition_name = plateread.acquisition_plan.acquisition.name
 
     match (before, plateread.status):
         case (ProcessStatus.RUNNING, ProcessStatus.COMPLETED):

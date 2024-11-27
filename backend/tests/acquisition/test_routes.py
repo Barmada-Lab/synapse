@@ -13,10 +13,10 @@ from app.acquisition.models import (
     AcquisitionRecord,
     AnalysisPlanCreate,
     AnalysisTrigger,
-    ProcessStatus,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
     SBatchAnalysisSpecUpdate,
+    SlurmJobStatus,
 )
 from app.core.config import settings
 from app.labware.models import Location
@@ -163,7 +163,7 @@ def test_delete_analysis_plan_by_id_not_found(
         f"{settings.API_V1_STR}/analysis_plans/{2**16}",
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json()["detail"] == "Plan not found."
+    assert response.json()["detail"] == "Analysis plan not found."
 
 
 def test_create_analysis_plan_requires_authentication(
@@ -206,8 +206,8 @@ def test_create_analysis_invalid_analysis_plan_id(
         f"{settings.API_V1_STR}/analyses",
         json=analysis.model_dump(mode="json"),
     )
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json()["detail"] == "Plan not found."
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json()["detail"] == "Analysis plan not found."
 
 
 def test_create_analysis_requires_authentication(
@@ -228,29 +228,29 @@ def test_create_analysis_requires_authentication(
 
 def test_update_analysis(pw_authenticated_client: TestClient, db: Session) -> None:
     spec = create_random_analysis_spec(session=db)
-    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
     response = pw_authenticated_client.patch(
         f"{settings.API_V1_STR}/analyses/{spec.id}",
         json=update.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["analysis_status"] == ProcessStatus.COMPLETED.value
+    assert response.json()["status"] == SlurmJobStatus.COMPLETED.value
 
 
 def test_update_analysis_not_found(pw_authenticated_client: TestClient) -> None:
-    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
     response = pw_authenticated_client.patch(
         f"{settings.API_V1_STR}/analyses/{2**16}",
         json=update.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json()["detail"] == "Analysis spec not found."
+    assert response.json()["detail"] == "Analysis specification not found."
 
 
 def test_update_analysis_requires_authentication(
     unauthenticated_client: TestClient,
 ) -> None:
-    update = SBatchAnalysisSpecUpdate(analysis_status=ProcessStatus.COMPLETED)
+    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
     response = unauthenticated_client.patch(
         f"{settings.API_V1_STR}/analyses/1",
         json=update.model_dump(mode="json"),
@@ -268,7 +268,6 @@ def test_delete_analysis(pw_authenticated_client: TestClient, db: Session) -> No
     )
     analysis = create_analysis_spec(
         session=db,
-        analysis_plan_id=analysis_plan.id,  # type: ignore
         create=analysis_create,
     )
     response = pw_authenticated_client.delete(
@@ -286,7 +285,7 @@ def test_delete_analysis_not_found(pw_authenticated_client: TestClient) -> None:
         f"{settings.API_V1_STR}/analyses/{2**16}",
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json()["detail"] == "Spec not found."
+    assert response.json()["detail"] == "Analysis specification not found."
 
 
 def test_delete_analysis_requires_authentication(
