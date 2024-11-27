@@ -49,13 +49,18 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
                     f"Invalid plate storage location: {plan.storage_location}"
                 )
 
-        parent_name = f"{xml_prefix}___{now_str}"
+        # we use the user_name param to achieve unique batch names.
+        # it needs an underscore at the end for some reason.
+        # the corresponding xml field must be populated with the same value.
+        user_name = f"{plan.acquisition.name}_"
+        parent_name = f"{xml_prefix}_{user_name}_{now_str}"
         batch_name = f"{parent_name}_READ{i:03d}"
         batch_path = kiosk_path / f"{batch_name}.xml"
 
         batch = Batch(
             start_after=spec.start_after,
             batch_name=batch_name,
+            user=user_name,
             parent_batch_name=parent_name,
             run_mode=run_mode,
             read_times=ReadTimeCollection(

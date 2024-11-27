@@ -87,7 +87,8 @@ class AcquisitionCreate(AcquisitionBase):
 class AcquisitionRecord(AcquisitionBase):
     id: int
     artifacts: list["ArtifactCollectionRecord"] = []
-    acquisition_plan: Optional["AcquisitionPlan"] = None
+    acquisition_plan: Optional["AcquisitionPlanRecord"] = None
+    analysis_plan: Optional["AnalysisPlanRecord"] = None
 
 
 class AcquisitionList(SQLModel):

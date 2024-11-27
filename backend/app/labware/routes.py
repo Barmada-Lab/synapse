@@ -81,17 +81,17 @@ def update_wellplate_location(
     "/{wellplate_id}/barcode",
     response_model=Message,
 )
-async def print_barcode(session: SessionDep, wellplate_id: int) -> Message:
+def print_barcode(session: SessionDep, wellplate_id: int) -> Message:
     if (wellplate := session.get(Wellplate, wellplate_id)) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found."
         )
-    wellplate_name = wellplate.name
+    barcode = wellplate.name
     try:
-        flows.print_wellplate_barcode(wellplate_name)
+        flows.print_wellplate_barcode(barcode)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to print barcode: {e}",
         )
-    return Message(content="Barcode printed.")
+    return Message(message="Barcode printed.")

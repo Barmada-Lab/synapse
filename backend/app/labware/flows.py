@@ -1,6 +1,5 @@
 from prefect import flow, task
 
-from app.core.config import settings
 from app.core.printer import get_barcode_printer
 
 
@@ -8,10 +7,6 @@ from app.core.printer import get_barcode_printer
 def print_wellplate_barcode_task(barcode: str):
     if not (1 < len(barcode) < 10):
         raise ValueError("Barcode must be 1-9 characters in length")
-
-    if settings.ENVIRONMENT == "local":
-        print(f"**MOCK** Printing barcode: {barcode}")
-        return
 
     zpl = (
         "^XA"  # Start label
@@ -29,7 +24,7 @@ def print_wellplate_barcode_task(barcode: str):
 
 @flow
 def print_wellplate_barcode(barcode: str):
-    print_wellplate_barcode_task.delay(barcode).wait()
+    print_wellplate_barcode_task(barcode)
 
 
 def get_tasks():
