@@ -1,4 +1,4 @@
-from prefect.events import DeploymentEventTrigger
+from prefect.events import DeploymentEventTrigger, ResourceSpecification
 
 from app.labware.models import Location
 
@@ -13,14 +13,16 @@ def get_deployments():
             triggers=[
                 DeploymentEventTrigger(
                     expect={"wellplate.location_update"},
-                    match={
-                        "prefect.resource.id": "wellplate.*",
-                        "location.before": Location.EXTERNAL.value,
-                        "location.after": [
-                            Location.CYTOMAT2.value,
-                            Location.HOTEL.value,
-                        ],
-                    },
+                    match=ResourceSpecification(
+                        {
+                            "prefect.resource.id": "wellplate.*",
+                            "location.before": Location.EXTERNAL.value,
+                            "location.after": [
+                                Location.CYTOMAT2.value,
+                                Location.HOTEL.value,
+                            ],
+                        }
+                    ),
                     parameters={"resource_id": "{{ event.resource.id }}"},
                     name="schedule-new-plate",
                 )
@@ -31,10 +33,12 @@ def get_deployments():
             triggers=[
                 DeploymentEventTrigger(
                     expect={"acquisition.plateread_completed"},
-                    match={
-                        "prefect.resource.id": "plateread.*",
-                        "status.before": "*",
-                    },
+                    match=ResourceSpecification(
+                        {
+                            "prefect.resource.id": "plateread.*",
+                            "status.before": "*",
+                        }
+                    ),
                     parameters={
                         "plateread_id": "{{ event.resource.id }}",
                         "before": "{{ event.status.before }}",
