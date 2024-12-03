@@ -12,7 +12,7 @@ def get_deployments():
             name="schedule-acquisition",
             triggers=[
                 DeploymentEventTrigger(
-                    event="wellplate.location_update",
+                    expect={"wellplate.location_update"},
                     match={
                         "prefect.resource.id": "wellplate.*",
                         "location.before": Location.EXTERNAL.value,
@@ -30,7 +30,7 @@ def get_deployments():
             name="post-acquisition",
             triggers=[
                 DeploymentEventTrigger(
-                    event="acquisition.plateread_completed",
+                    expect={"acquisition.plateread_completed"},
                     match={
                         "prefect.resource.id": "plateread.*",
                         "status.before": "*",
