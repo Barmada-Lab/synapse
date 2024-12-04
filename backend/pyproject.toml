@@ -1,8 +1,8 @@
 [project]
 name = "app"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "fastapi[standard]<1.0.0,>=0.114.2",
     "python-multipart<1.0.0,>=0.0.7",
@@ -23,6 +23,7 @@ dependencies = [
     "pyjwt<3.0.0,>=2.8.0",
     "prefect>=3.0.11",
     "pydantic-xml>=2.14.0",
+    "synapse-greatlakes",
 ]
 
 [project.scripts]
@@ -40,6 +41,9 @@ dev-dependencies = [
     "ipython>=8.29.0",
     "pytest-asyncio>=0.23.8",
 ]
+
+[tool.uv.sources]
+synapse-greatlakes = { git = "git+ssh://git@github.com/Barmada-Lab/synapse-greatlakes.git" }
 
 [tool.pytest.ini_options]
 addopts = [

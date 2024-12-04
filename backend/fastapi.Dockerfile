@@ -1,4 +1,4 @@
-FROM python:3.10-bookworm
+FROM python:3.11-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -31,11 +31,16 @@ ENV UV_COMPILE_BYTECODE=1
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#caching
 ENV UV_LINK_MODE=copy
 
+# Disable host key checking and hope we don't get MITM'd
+RUN --mount=type=ssh,required=true \
+    mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
 # Install dependencies
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=ssh,required=true \
     uv sync --frozen --no-install-project
 
 ENV PYTHONPATH=/app
@@ -49,6 +54,7 @@ COPY ./app /app/app
 # Sync the project
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=ssh,required=true \
     uv sync
 
 CMD ["fastapi", "run", "--workers", "4", "app/main.py"]

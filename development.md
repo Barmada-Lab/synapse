@@ -6,6 +6,30 @@ The only way I can figure to have distinct dev/prod deployments on prefect cloud
 
 ## Docker Compose
 
+### Building
+
+We have an external dependency on the repository https://github.com/Barmada-Lab/synapse-greatlakes, which is private. If you were able to clone this repository, you've probably configured your ssh keys correctly. You will have to give docker access to your ssh keys to fetch these private repos and build the stack's images.
+
+You can do so by running:
+
+```bash
+eval $(ssh-agent) && ssh-add ~/.ssh/<your_github_ssh_key>
+```
+
+Then, you should be able to successfully run:
+
+```bash
+docker compose build
+```
+
+**Note** By default, ssh-add only persists the identity passed to it until you close your shell. To make this addition persistent between shell sessions, there are a few methods available. On mac, you can accomplish this by running:
+
+```bash
+ssh-add --apple-use-keychain ~/.ssh/<your_github_ssh_key>
+```
+
+### Running
+
 * Start the local stack with Docker Compose:
 
 ```bash
