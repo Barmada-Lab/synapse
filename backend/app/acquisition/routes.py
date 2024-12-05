@@ -16,6 +16,7 @@ from .models import (
     AcquisitionPlanRecord,
     AcquisitionRecord,
     AnalysisPlan,
+    AnalysisPlanCreate,
     AnalysisPlanRecord,
     PlatereadSpec,
     PlatereadSpecRecord,
@@ -77,7 +78,7 @@ def delete_acquisition(session: SessionDep, id: int) -> Response:
     status_code=status.HTTP_201_CREATED,
 )
 def create_analysis_plan(
-    session: SessionDep, analysis_plan_create: AnalysisPlan
+    session: SessionDep, analysis_plan_create: AnalysisPlanCreate
 ) -> AnalysisPlanRecord:
     acquisition_id = analysis_plan_create.acquisition_id
     acquisition = session.get(Acquisition, acquisition_id)
