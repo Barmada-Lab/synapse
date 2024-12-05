@@ -1,10 +1,14 @@
 import enum
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 import sqlalchemy as sa
+from pydantic import computed_field
 from sqlmodel import Column, Enum, Field, Relationship, SQLModel
 
+from app.acquisition.consts import TAR_ZST_EXTENSION
+from app.core.config import settings
 from app.labware.models import Location, Wellplate
 
 
@@ -20,12 +24,13 @@ class ProcessStatus(str, enum.Enum):
 
 class SlurmJobStatus(str, enum.Enum):
     UNSUBMITTED = "UNSUBMITTED"
-    COMPLETED = "COMPLETED"
-    COMPLETING = "COMPLETING"
+    SUBMITTED = "SUBMITTED"
     PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETING = "COMPLETING"
+    COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
-    RUNNING = "RUNNING"
     UNHANDLED = "UNHANDLED"
 
 
@@ -38,6 +43,16 @@ class Repository(str, enum.Enum):
     ACQUISITION = "ACQUISITION"
     ARCHIVE = "ARCHIVE"
     ANALYSIS = "ANALYSIS"
+
+    @property
+    def path(self) -> Path:
+        match self:
+            case Repository.ACQUISITION:
+                return settings.ACQUISITION_DIR
+            case Repository.ARCHIVE:
+                return settings.ARCHIVE_DIR
+            case Repository.ANALYSIS:
+                return settings.ANALYSIS_DIR
 
 
 class ArtifactType(str, enum.Enum):
@@ -121,6 +136,30 @@ class ArtifactCollectionBase(SQLModel):
     )
 
 
+"""
+
+Artifact collections are directories of related data stored in an acquisition
+directory. There are two artifact collection types: acquisition, and analysis.
+Acquisition artifact collections contain raw acquisition data, and analysis
+artifact collections contain data derived from the raw acquisition data.
+Artifact collections additionally have a location field, which specifies the
+repository in which the collection is stored. The repository has a
+corresponding local path on the server, which is used to locate the data.
+
+Example directory structure:
+
+/analysis
+    /acquisition_name
+        /acquisition
+        /analysis
+
+/archive
+    /acquisition_name
+        /acquisition.tar.zst
+
+"""
+
+
 class ArtifactCollection(ArtifactCollectionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
@@ -139,6 +178,13 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
             name="unique_acquisition_collection",
         ),
     )
+
+    @computed_field  # type: ignore
+    @property
+    def path(self) -> Path:
+        return get_artifact_collection_path(
+            self.location, self.acquisition.name, self.artifact_type
+        )
 
 
 class ArtifactCollectionCreate(ArtifactCollectionBase):
@@ -323,3 +369,17 @@ class SBatchAnalysisSpecRecord(SBatchAnalysisSpecBase):
 
 class SBatchAnalysisSpecUpdate(SQLModel):
     status: SlurmJobStatus
+
+
+def get_acquisition_path(repository: Repository, acquisition_name: str) -> Path:
+    return repository.path / acquisition_name
+
+
+def get_artifact_collection_path(
+    repository: Repository, acquisition_name: str, artifact_type: ArtifactType
+) -> Path:
+    acquisition_path = get_acquisition_path(repository, acquisition_name)
+    artifact_collection_file = artifact_type.value.lower()
+    if repository == Repository.ARCHIVE:
+        artifact_collection_file += TAR_ZST_EXTENSION
+    return acquisition_path / artifact_collection_file

@@ -1,4 +1,3 @@
-import os
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
@@ -44,21 +43,4 @@ def overlord_dir() -> Generator[Path, None, None]:
         (settings.OVERLORD_DIR / "Batches" / "Queued").mkdir(exist_ok=True)
         (settings.OVERLORD_DIR / "Batches" / "Archive").mkdir(exist_ok=True)
         (settings.OVERLORD_DIR / "Batches" / "Running").mkdir(exist_ok=True)
-        yield Path(tempdir)
-
-
-@pytest.fixture(scope="function")
-def random_acquisition_file(acquisition_dir: Path) -> Generator[Path, None, None]:
-    with tempfile.NamedTemporaryFile(dir=acquisition_dir, delete=False) as f:
-        f.write(os.urandom(1024))
-        yield Path(f.name)
-
-
-@pytest.fixture(scope="function")
-def random_acquisition_dir(acquisition_dir: Path) -> Generator[Path, None, None]:
-    with (
-        tempfile.TemporaryDirectory(dir=acquisition_dir) as tempdir,
-        tempfile.NamedTemporaryFile(dir=tempdir, delete=False) as f,
-    ):
-        f.write(os.urandom(1024))
         yield Path(tempdir)

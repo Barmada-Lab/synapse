@@ -1,4 +1,6 @@
+import os
 import random
+import tempfile
 from datetime import timedelta
 
 from sqlmodel import Session
@@ -36,16 +38,23 @@ def create_random_acquisition(*, session: Session, **kwargs) -> Acquisition:
     return create_acquisition(session=session, acquisition_create=acquisition_create)
 
 
-def create_random_analysis_plan(*, session: Session) -> AnalysisPlan:
-    acquisition = create_random_acquisition(session=session)
+def create_random_analysis_plan(
+    *, session: Session, acquisition: Acquisition | None = None
+) -> AnalysisPlan:
+    if acquisition is None:
+        acquisition = create_random_acquisition(session=session)
     return create_analysis_plan(
         session=session,
         acquisition_id=acquisition.id,  # type: ignore
     )
 
 
-def create_random_analysis_spec(*, session: Session) -> SBatchAnalysisSpec:
-    analysis_plan = create_random_analysis_plan(session=session)
+def create_random_analysis_spec(
+    *, session: Session, acquisition: Acquisition | None = None
+) -> SBatchAnalysisSpec:
+    analysis_plan = create_random_analysis_plan(
+        session=session, acquisition=acquisition
+    )
     analysis_create = SBatchAnalysisSpecCreate(
         trigger=random.choice(list(AnalysisTrigger)),
         analysis_cmd=random_lower_string(),
@@ -93,20 +102,24 @@ def create_random_acquisition_plan(
 
 
 def create_random_artifact_collection(
-    *, session: Session, **kwargs
+    *,
+    session: Session,
+    artifact_type: ArtifactType = ArtifactType.ACQUISITION,
+    location: Repository = Repository.ACQUISITION,
 ) -> ArtifactCollection:
     acquisition_create = AcquisitionCreate(name=random_lower_string())
     acquisition = create_acquisition(
         session=session, acquisition_create=acquisition_create
     )
-    kwargs.setdefault("name", random_lower_string())
-    kwargs.setdefault("artifact_type", random.choice(list(ArtifactType)))
-    kwargs.setdefault("location", random.choice(list(Repository)))
     artifact_collection_create = ArtifactCollectionCreate(
-        acquisition_id=acquisition.id, **kwargs
+        acquisition_id=acquisition.id, artifact_type=artifact_type, location=location
     )
-    return create_artifact_collection(
+    collection = create_artifact_collection(
         session=session,
         acquisition_id=acquisition.id,  # type: ignore
         artifact_collection_create=artifact_collection_create,
     )
+    collection.path.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=collection.path, delete=False) as f:
+        f.write(os.urandom(1024))
+    return collection

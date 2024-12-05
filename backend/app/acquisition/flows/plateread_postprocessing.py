@@ -7,23 +7,31 @@ import shutil
 from pathlib import Path
 
 from prefect import flow, task
+from prefect.events import emit_event
 from pydantic import DirectoryPath
+from sqlmodel import Session
+from synapse_greatlakes.messages import Message, RequestSubmitJob
 
+from app.acquisition import crud
+from app.acquisition.consts import TAR_ZST_EXTENSION
 from app.acquisition.events import PLATEREAD_RESOURCE_REGEX
 from app.acquisition.models import (
+    AnalysisPlan,
+    ArtifactCollection,
+    ArtifactType,
     PlatereadSpec,
     ProcessStatus,
+    Repository,
+    SBatchAnalysisSpec,
+    SBatchAnalysisSpecUpdate,
+    SlurmJobStatus,
+    get_acquisition_path,
 )
 from app.common.errors import AggregateError
 from app.common.proc import run_subproc_async
-from app.core.config import settings
 from app.core.deps import get_db
 
 logger = logging.getLogger(__name__)
-
-
-async def _sync_cmd(origin: Path, dest: DirectoryPath):
-    await run_subproc_async(f"rsync -r {origin} {dest}", check=True)
 
 
 def cleanup(path: Path):
@@ -38,12 +46,17 @@ def cleanup(path: Path):
         raise e
 
 
+# call separated to allow mocking
+async def _sync_cmd(origin: Path, dest: DirectoryPath):
+    await run_subproc_async(f"rsync -r {origin} {dest}", check=True)
+
+
 @task
 async def sync(origin: Path, dest: DirectoryPath):
-    # call separated to allow mocking
     await _sync_cmd(origin, dest)
 
 
+# call separated to allow mocking
 async def _archive_cmd(dest_zst: Path, origin: DirectoryPath):
     match platform.system():
         case "Linux":
@@ -62,76 +75,109 @@ async def _archive_cmd(dest_zst: Path, origin: DirectoryPath):
 
 @task
 async def archive(origin: DirectoryPath, dest: DirectoryPath):
-    dest_zst = dest / f"{origin.name}.tar.zst"
-    # call separated to allow mocking
+    dest_zst = dest / (origin.name + TAR_ZST_EXTENSION)
     await _archive_cmd(dest_zst, origin)
 
 
 @task
-def rmtree(local_dir: Path):
-    shutil.rmtree(local_dir)
+async def sync_and_archive(session: Session, acquisition_artifacts: ArtifactCollection):
+    acquisition_name = acquisition_artifacts.acquisition.name
 
+    # setup destination paths
+    analysis_acquisition_path = get_acquisition_path(
+        Repository.ANALYSIS, acquisition_name
+    )
+    archive_acquisition_path = get_acquisition_path(
+        Repository.ARCHIVE, acquisition_name
+    )
 
-@task
-def verify_acquisition_dir(_local_dir: Path):
-    if not _local_dir.is_dir():
-        raise FileNotFoundError(f"Acquisition directory {_local_dir} not found")
+    if not analysis_acquisition_path.exists():
+        analysis_acquisition_path.mkdir()
+    if not archive_acquisition_path.exists():
+        archive_acquisition_path.mkdir()
 
-
-@flow
-async def handle_post_acquisition(acquisition_name: str):
-    # TODO: create acquisition collections as platereads complete
-    # with get_db() as session:
-    #     acquisition = crud.get_acquisition_by_name(
-    #         session=session, name=acquisition_name
-    #     )
-    #     if not acquisition:
-    #         raise ValueError(f"Acquisition {acquisition_name} not found")
-
-    #     acquisition_collection = crud.get_artifact_collection_by_key(
-    #         session=session,
-    #         acquisition_id=acquisition.id, # type: ignore
-    #         key=(Repository.ACQUISITION, ArtifactType.ACQUISITION)
-    #     )
-    #     if not acquisition_collection:
-    #         raise ValueError(f"Acquisition {acquisition_name} has acquisition artifact collection")
-
-    acquisition_path = (settings.ACQUISITION_DIR / acquisition_name).resolve()
-    if not acquisition_path.is_relative_to(settings.ACQUISITION_DIR.resolve()):
-        raise ValueError(
-            f"Path {acquisition_path} is not within {settings.ACQUISITION_DIR}. Are you tryna path-traverse me, bro?"
-        )
-    elif not acquisition_path.exists():
-        raise FileNotFoundError(f"Experiment {acquisition_path} does not exist")
-
-    verify_acquisition_dir(acquisition_path)
-
+    # TODO: fuse sync/archive with modifying db records
     results = await asyncio.gather(
-        sync(acquisition_path, settings.ANALYSIS_DIR),
-        archive(acquisition_path, settings.ARCHIVE_DIR),
+        sync(acquisition_artifacts.path, analysis_acquisition_path),
+        archive(acquisition_artifacts.path, archive_acquisition_path),
         return_exceptions=True,
     )
 
     if any(errors := [result for result in results if isinstance(result, Exception)]):
         raise AggregateError(*errors)
 
-    rmtree(acquisition_path)
+    session.add(acquisition_artifacts)
 
-    # TODO: create acquisition collections as platereads complete
-    # with get_db() as session:
-    #     crud.create_artifact_collection_replica(
-    #         session=session,
-    #         artifact_collection=acquisition_collection,
-    #         location=Repository.ARCHIVE,
-    #     )
-    #     crud.create_artifact_collection_replica(
-    #         session=session,
-    #         artifact_collection=acquisition_collection,
-    #         location=Repository.ACQUISITION,
-    #     )
-    #     session.delete(acquisition_collection)
+    crud.create_artifact_collection_replica(
+        session=session,
+        artifact_collection=acquisition_artifacts,
+        location=Repository.ARCHIVE,
+    )
+    crud.create_artifact_collection_replica(
+        session=session,
+        artifact_collection=acquisition_artifacts,
+        location=Repository.ANALYSIS,
+    )
+    session.delete(acquisition_artifacts)
+    cleanup(acquisition_artifacts.path)
 
-    # submit analysis tasks
+
+@task
+def submit_analysis_request(analysis_spec: SBatchAnalysisSpec):
+    event = Message(
+        resource=f"sbatch_analysis.{analysis_spec.id}",
+        payload=RequestSubmitJob(
+            script=analysis_spec.analysis_cmd,
+            args=analysis_spec.analysis_args,
+        ),
+    ).to_event()
+    emit_event(**event.model_dump())
+
+
+@task
+def execute_analysis_plan(session: Session, analysis_plan: AnalysisPlan):
+    for analysis_spec in analysis_plan.sbatch_analyses:
+        if analysis_spec.status == SlurmJobStatus.UNSUBMITTED:
+            submit_analysis_request(analysis_spec)
+            crud.update_analysis_spec(
+                session=session,
+                db_analysis=analysis_spec,
+                update=SBatchAnalysisSpecUpdate(status=SlurmJobStatus.SUBMITTED),
+            )
+
+
+@flow
+async def handle_post_acquisition(acquisition_name: str):
+    with get_db() as session:
+        acquisition = crud.get_acquisition_by_name(
+            session=session, name=acquisition_name
+        )
+        if not acquisition:
+            raise ValueError(f"Acquisition {acquisition_name} not found")
+
+        acquisition_collection = crud.get_artifact_collection_by_key(
+            session=session,
+            acquisition_id=acquisition.id,  # type: ignore
+            key=(Repository.ACQUISITION, ArtifactType.ACQUISITION),
+        )
+        if not acquisition_collection:
+            raise ValueError(
+                f"{acquisition_name} doesn't have an acquisition artifact collection"
+            )
+        elif not acquisition_collection.path.exists():
+            raise FileNotFoundError(
+                f"{acquisition_name} artifact collection not found at path {acquisition_collection.path}"
+            )
+        elif not acquisition_collection.path.is_dir():
+            raise NotADirectoryError(
+                f"{acquisition_name} artifact collection is not a directory: {acquisition_collection.path}"
+            )
+
+        await sync_and_archive(session, acquisition_collection)
+
+        analysis_plan = acquisition.analysis_plan
+        if analysis_plan is not None:
+            execute_analysis_plan(session, analysis_plan)
 
 
 @flow

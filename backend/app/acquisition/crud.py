@@ -56,10 +56,11 @@ def create_artifact_collection(
 def get_artifact_collection_by_key(
     *, session: Session, acquisition_id: int, key: tuple[Repository, ArtifactType]
 ) -> ArtifactCollection | None:
-    statement = select(ArtifactCollection).where(
-        ArtifactCollection.acquisition_id == acquisition_id
-        and ArtifactCollection.location == key[0]
-        and ArtifactCollection.artifact_type == key[1]
+    statement = (
+        select(ArtifactCollection)
+        .where(ArtifactCollection.acquisition_id == acquisition_id)
+        .where(ArtifactCollection.location == key[0])
+        .where(ArtifactCollection.artifact_type == key[1])
     )
     return session.exec(statement).first()
 
@@ -77,29 +78,37 @@ def create_artifact(
 
 
 # TODO: write tests
-# def create_artifact_collection_replica(
-#     *, session: Session, artifact_collection: ArtifactCollection, location: Repository
-# ) -> ArtifactCollection:
-#     other_artifact_collections = artifact_collection.acquisition.collections
-#     if artifact_collection.location == location or any(
-#         other.location == location for other in other_artifact_collections
-#     ):
-#         raise ValueError("Duplicate artifact collection!")
-#     create = ArtifactCollectionCreate(
-#         location=location,
-#         artifact_type=artifact_collection.artifact_type,
-#         acquisition_id=artifact_collection.acquisition_id,
-#     )
-#     created = create_artifact_collection(session=session, artifact_collection_create=create)
-#     for artifact in artifact_collection.artifacts:
-#         create_artifact(
-#             session=session,
-#             artifact_collection_id=created.id,  # type: ignore
-#             artifact_create=ArtifactCreate(
-#                 name=artifact.name,
-#             ),
-#         )
-#     return created
+def create_artifact_collection_replica(
+    *, session: Session, artifact_collection: ArtifactCollection, location: Repository
+) -> ArtifactCollection:
+    other_artifact_collections = artifact_collection.acquisition.collections
+    if artifact_collection.location == location or any(
+        other.location == location for other in other_artifact_collections
+    ):
+        raise ValueError("Duplicate artifact collection!")
+
+    create = ArtifactCollectionCreate(
+        location=location,
+        artifact_type=artifact_collection.artifact_type,
+        acquisition_id=artifact_collection.acquisition_id,
+    )
+    acquisition_id = artifact_collection.acquisition_id
+    created = create_artifact_collection(
+        session=session,
+        acquisition_id=acquisition_id,
+        artifact_collection_create=create,
+    )
+
+    for artifact in artifact_collection.artifacts:
+        create_artifact(
+            session=session,
+            artifact_collection_id=created.id,  # type: ignore
+            artifact_create=ArtifactCreate(
+                name=artifact.name,
+            ),
+        )
+
+    return created
 
 
 def create_acquisition_plan(
