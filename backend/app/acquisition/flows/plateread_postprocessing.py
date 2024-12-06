@@ -135,7 +135,7 @@ def submit_analysis_request(analysis_spec: SBatchAnalysisSpec):
 
 
 @task
-def execute_analysis_plan(session: Session, analysis_plan: AnalysisPlan):
+def submit_analysis_plan(session: Session, analysis_plan: AnalysisPlan):
     for analysis_spec in analysis_plan.sbatch_analyses:
         if analysis_spec.status == SlurmJobStatus.UNSUBMITTED:
             submit_analysis_request(analysis_spec)
@@ -144,6 +144,20 @@ def execute_analysis_plan(session: Session, analysis_plan: AnalysisPlan):
                 db_analysis=analysis_spec,
                 update=SBatchAnalysisSpecUpdate(status=SlurmJobStatus.SUBMITTED),
             )
+
+
+@flow
+def handle_submit_analysis_plan(acquisition_name: str):
+    with get_db() as session:
+        acquisition = crud.get_acquisition_by_name(
+            session=session, name=acquisition_name
+        )
+        if not acquisition:
+            raise ValueError(f"Acquisition {acquisition_name} not found")
+
+        analysis_plan = acquisition.analysis_plan
+        if analysis_plan is not None:
+            submit_analysis_plan(session, analysis_plan)
 
 
 @flow
@@ -175,9 +189,7 @@ async def handle_post_acquisition(acquisition_name: str):
 
         await sync_and_archive(session, acquisition_collection)
 
-        analysis_plan = acquisition.analysis_plan
-        if analysis_plan is not None:
-            execute_analysis_plan(session, analysis_plan)
+    handle_submit_analysis_plan(acquisition_name)
 
 
 @flow

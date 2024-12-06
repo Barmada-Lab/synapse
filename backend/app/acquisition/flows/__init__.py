@@ -3,7 +3,10 @@ from prefect.events import DeploymentEventTrigger, ResourceSpecification
 from app.labware.models import Location
 
 from .acquisition_scheduling import check_to_schedule_acquisition
-from .plateread_postprocessing import post_plateread_handler
+from .plateread_postprocessing import (
+    handle_submit_analysis_plan,
+    post_plateread_handler,
+)
 
 
 def get_deployments():
@@ -47,4 +50,5 @@ def get_deployments():
                 )
             ],
         ),
+        handle_submit_analysis_plan.to_deployment("submit-analysis-plan"),
     ]
