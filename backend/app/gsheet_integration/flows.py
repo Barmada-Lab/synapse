@@ -9,6 +9,7 @@ from app.core.deps import get_db
 from .acquisition_plans import AcquisitionPlanSheet, CreateAcquisitionPlanSheet
 from .acquisitions import AcquisitionSheet, ArchiveSheet, CreateAcquisitionSheet
 from .analysis_plans import AnalysisPlanSheet, CreateAnalysisPlanSheet
+from .print_barcodes import PrintBarcodesSheet
 
 
 def get_imaging_spreadsheet() -> gspread.Spreadsheet:
@@ -64,6 +65,11 @@ def sync_google_sheets():
         analysis_sheet = AnalysisPlanSheet(analysis_ws, session)
         analysis_sheet.process_sheet()
         analysis_sheet.render(analysis_ws)
+
+        print_barcodes_ws = spread.worksheet("print_barcodes")
+        print_barcodes_sheet = PrintBarcodesSheet(print_barcodes_ws, session)
+        print_barcodes_sheet.process_sheet()
+        print_barcodes_sheet.render(print_barcodes_ws)
 
 
 def get_deployments():
