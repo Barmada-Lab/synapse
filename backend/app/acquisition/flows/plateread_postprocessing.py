@@ -156,6 +156,7 @@ def handle_submit_analysis_plan(acquisition_name: str):
             raise ValueError(f"Acquisition {acquisition_name} not found")
 
         analysis_plan = acquisition.analysis_plan
+        # **NOTE** only works for endpoint analysis- doesn't handle intermediate analyses
         if analysis_plan is not None:
             submit_analysis_plan(session, analysis_plan)
 

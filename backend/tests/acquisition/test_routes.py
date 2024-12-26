@@ -153,7 +153,9 @@ def test_delete_analysis_plan_by_id(
 
     # the plan should be deleted from the database
     db.reset()  # reset to session cache
-    assert db.get(AcquisitionPlan, plan.id) is None
+    assert (
+        db.get(AcquisitionPlan, plan.id) is None
+    )  # TODO: flaky- need to replace this with API call
 
 
 def test_delete_analysis_plan_by_id_not_found(
