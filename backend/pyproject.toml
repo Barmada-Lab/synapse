@@ -34,7 +34,6 @@ dependencies = [
 [project.scripts]
 synapse-flow-worker = "app.core.workers.synapse_flow_worker:run"
 synapse-task-worker = "app.core.workers.synapse_task_worker:run"
-test-sync = "app.gsheet_integration.real.ex:gsheet_test"
 
 [tool.uv]
 dev-dependencies = [
