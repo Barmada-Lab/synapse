@@ -182,3 +182,19 @@ def update_analysis_spec(
     session.commit()
     session.refresh(db_analysis)
     return db_analysis
+
+
+def get_analysis_spec(
+    *,
+    session: Session,
+    analysis_plan_id: int,
+    analysis_cmd: str,
+    analysis_args: list[str],
+) -> SBatchAnalysisSpec | None:
+    statement = (
+        select(SBatchAnalysisSpec)
+        .where(SBatchAnalysisSpec.analysis_plan_id == analysis_plan_id)
+        .where(SBatchAnalysisSpec.analysis_cmd == analysis_cmd)
+        .where(SBatchAnalysisSpec.analysis_args == analysis_args)
+    )
+    return session.exec(statement).first()

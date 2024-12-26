@@ -27,7 +27,6 @@ class SlurmJobStatus(str, enum.Enum):
     SUBMITTED = "SUBMITTED"
     PENDING = "PENDING"
     RUNNING = "RUNNING"
-    COMPLETING = "COMPLETING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
@@ -78,6 +77,7 @@ class AnalysisTrigger(str, enum.Enum):
 
 class AcquisitionBase(SQLModel):
     name: str = Field(unique=True, index=True, min_length=1, max_length=255)
+    is_active: bool = Field(default=True)
 
 
 class Acquisition(AcquisitionBase, table=True):
@@ -356,6 +356,15 @@ class SBatchAnalysisSpec(SBatchAnalysisSpecBase, table=True):
 
     analysis_plan_id: int = Field(foreign_key="analysisplan.id", ondelete="CASCADE")
     analysis_plan: AnalysisPlan = Relationship(back_populates="sbatch_analyses")
+
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "analysis_plan_id",
+            "analysis_cmd",
+            "analysis_args",
+            name="unique_sbatch_analysis_per_plan",
+        ),
+    )
 
 
 class SBatchAnalysisSpecCreate(SBatchAnalysisSpecBase):
