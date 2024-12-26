@@ -2,7 +2,7 @@
 name = "app"
 version = "0.2.1"
 description = ""
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi[standard]<1.0.0,>=0.114.2",
     "python-multipart<1.0.0,>=0.0.7",
@@ -24,25 +24,29 @@ dependencies = [
     "prefect>=3.0.11",
     "pydantic-xml>=2.14.0",
     "synapse-greatlakes",
-    "google-api-python-client>=2.154.0",
-    "google-auth-httplib2>=0.2.0",
-    "google-auth-oauthlib>=1.2.1",
+    "natsort>=8.4.0",
+    "returns>=0.24.0",
+    "gspread>=6.1.4",
+    "gspread-formatting>=1.2.0",
+    "pandas>=2.2.3",
 ]
 
 [project.scripts]
 synapse-flow-worker = "app.core.workers.synapse_flow_worker:run"
 synapse-task-worker = "app.core.workers.synapse_task_worker:run"
+test-sync = "app.gsheet_integration.real.ex:gsheet_test"
 
 [tool.uv]
 dev-dependencies = [
     "pytest<8.0.0,>=7.4.3",
-    "mypy<2.0.0,>=1.8.0",
+    "mypy>=1.8.0,<2.0.0",
     "ruff<1.0.0,>=0.2.2",
     "pre-commit<4.0.0,>=3.6.2",
     "types-passlib<2.0.0.0,>=1.7.7.20240106",
     "coverage<8.0.0,>=7.4.3",
     "ipython>=8.29.0",
     "pytest-asyncio>=0.23.8",
+    "pandas-stubs>=2.2.3.241126",
 ]
 
 [tool.uv.sources]
@@ -60,6 +64,7 @@ build-backend = "hatchling.build"
 
 [tool.mypy]
 strict = true
+plugins = ["returns.contrib.mypy.returns_plugin"]
 exclude = ["venv", ".venv", "alembic"]
 
 [tool.ruff]
