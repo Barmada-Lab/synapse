@@ -40,6 +40,7 @@ def sync_google_sheets():
         archive_sheet.process_sheet()
         archive_sheet.render(archive_ws)
         # run it back
+        acquisition_ws = spread.worksheet("acquisitions")
         acquisition_sheet.render(acquisition_ws)
 
         create_acquisition_ws = spread.worksheet("create_acquisition_plan")
