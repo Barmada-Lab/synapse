@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
-        return MultiHostUrl.build(
+        return MultiHostUrl.build(  # type: ignore[return-value]
             scheme="postgresql+psycopg",
             username=self.POSTGRES_USER,
             password=self.POSTGRES_PASSWORD,
@@ -149,6 +149,9 @@ class Settings(BaseSettings):
     ZPL_PRINTER_PORT: int
 
     TIMEZONE: str = "UTC"
+
+    G_SACCT_CREDS_BLOCK_ID: str = "google-sheets-token"
+    IMAGING_SPREADSHEET_ID: str = ""
 
 
 settings = Settings()  # type: ignore
