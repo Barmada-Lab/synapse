@@ -86,7 +86,7 @@ services:
       SMTP_TLS: "false"
       EMAILS_FROM_EMAIL: "noreply@example.com"
 
-  flow-worker:
+  prefect-worker:
     develop:
       watch:
         - path: ./backend
@@ -98,17 +98,6 @@ services:
         - path: ./backend/pyproject.toml
           action: rebuild
 
-  task-worker:
-    develop:
-      watch:
-        - path: ./backend
-          action: sync+restart
-          target: /app
-          ignore:
-            - ./backend/.venv
-            - .venv
-        - path: ./backend/pyproject.toml
-          action: rebuild
 
   mailcatcher:
     image: schickling/mailcatcher

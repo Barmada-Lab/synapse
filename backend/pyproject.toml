@@ -32,8 +32,7 @@ dependencies = [
 ]
 
 [project.scripts]
-synapse-flow-worker = "app.core.workers.synapse_flow_worker:run"
-synapse-task-worker = "app.core.workers.synapse_task_worker:run"
+prefect-worker = "app.core.worker:run"
 
 [tool.uv]
 dev-dependencies = [
