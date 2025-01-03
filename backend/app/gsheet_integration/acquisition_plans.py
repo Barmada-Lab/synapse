@@ -58,23 +58,31 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
             session=self.session, name=record.wellplate_name
         )
         if not wellplate:
-            wellplate_create = WellplateCreate(
-                name=record.wellplate_name,
-                plate_type=WellplateType.REVVITY_PHENOPLATE_96,
+            try:
+                wellplate = lw_crud.create_wellplate(
+                    session=self.session,
+                    wellplate_create=WellplateCreate(
+                        name=record.wellplate_name,
+                        plate_type=WellplateType.REVVITY_PHENOPLATE_96,
+                    ),
+                )
+            except Exception as e:
+                return Failure(RowError(row=record.model_dump(), message=str(e)))
+        try:
+            acq_crud.create_acquisition_plan(
+                session=self.session,
+                plan_create=AcquisitionPlanCreate(
+                    acquisition_id=acquisition.id,
+                    wellplate_id=wellplate.id,
+                    storage_location=record.storage_location,
+                    n_reads=record.n_reads,
+                    interval=timedelta(minutes=record.interval_mins),
+                    protocol_name=record.protocol_name,
+                ),
             )
-            wellplate = lw_crud.create_wellplate(
-                session=self.session, wellplate_create=wellplate_create
-            )
-        create = AcquisitionPlanCreate(
-            acquisition_id=acquisition.id,
-            wellplate_id=wellplate.id,
-            storage_location=record.storage_location,
-            n_reads=record.n_reads,
-            interval=timedelta(minutes=record.interval_mins),
-            protocol_name=record.protocol_name,
-        )
-        acq_crud.create_acquisition_plan(session=self.session, plan_create=create)
-        return Success(None)
+            return Success(None)
+        except Exception as e:
+            return Failure(RowError(row=record.model_dump(), message=str(e)))
 
     def compile_updated_records(
         self, ignore: list[RowError]

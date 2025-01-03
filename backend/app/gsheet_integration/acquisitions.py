@@ -32,9 +32,12 @@ class CreateAcquisitionSheet(RecordSheet[CreateAcquisitionRecord]):
             return Failure(
                 RowError(row=record.model_dump(), message="Acquisition already exists")
             )
-        create = AcquisitionCreate(name=record.acquisition_name)
-        crud.create_acquisition(session=self.session, acquisition_create=create)
-        return Success(None)
+        try:
+            create = AcquisitionCreate(name=record.acquisition_name)
+            crud.create_acquisition(session=self.session, acquisition_create=create)
+            return Success(None)
+        except Exception as e:
+            return Failure(RowError(row=record.model_dump(), message=str(e)))
 
     def compile_updated_records(
         self, ignore: list[RowError]
