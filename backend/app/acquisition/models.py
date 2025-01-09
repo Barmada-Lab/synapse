@@ -21,6 +21,14 @@ class ProcessStatus(str, enum.Enum):
     ABORTED = "ABORTED"  # system-initiated stop state
     RESET = "RESET"
 
+    @property
+    def is_endstate(self) -> bool:
+        return self in [
+            ProcessStatus.COMPLETED,
+            ProcessStatus.CANCELLED,
+            ProcessStatus.ABORTED,
+        ]
+
 
 class SlurmJobStatus(str, enum.Enum):
     UNSUBMITTED = "UNSUBMITTED"
@@ -39,28 +47,28 @@ class ImagingPriority(str, enum.Enum):
 
 
 class Repository(str, enum.Enum):
-    ACQUISITION = "ACQUISITION"
-    ARCHIVE = "ARCHIVE"
-    ANALYSIS = "ANALYSIS"
+    ACQUISITION_STORE = "ACQUISITION_STORE"
+    ARCHIVE_STORE = "ARCHIVE_STORE"
+    ANALYSIS_STORE = "ANALYSIS_STORE"
 
     @property
     def path(self) -> Path:
         match self:
-            case Repository.ACQUISITION:
+            case Repository.ACQUISITION_STORE:
                 return settings.ACQUISITION_DIR
-            case Repository.ARCHIVE:
+            case Repository.ARCHIVE_STORE:
                 return settings.ARCHIVE_DIR
-            case Repository.ANALYSIS:
+            case Repository.ANALYSIS_STORE:
                 return settings.ANALYSIS_DIR
 
 
 class ArtifactType(str, enum.Enum):
-    ACQUISITION = "ACQUISITION"
-    ANALYSIS = "ANALYSIS"
+    ACQUISITION_DATA = "ACQUISITION_DATA"
+    ANALYSIS_DATA = "ANALYSIS_DATA"
 
 
 class AnalysisTrigger(str, enum.Enum):
-    POST_ACQUISTION = "POST_ACQUISITION"
+    END_OF_RUN = "END_OF_RUN"
     POST_READ = "POST_READ"
 
 
@@ -83,7 +91,7 @@ class AcquisitionBase(SQLModel):
 class Acquisition(AcquisitionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    collections: list["ArtifactCollection"] = Relationship(
+    collections_list: list["ArtifactCollection"] = Relationship(
         back_populates="acquisition", cascade_delete=True
     )
 
@@ -93,6 +101,19 @@ class Acquisition(AcquisitionBase, table=True):
     analysis_plan: Optional["AnalysisPlan"] = Relationship(
         back_populates="acquisition", cascade_delete=True
     )
+
+    def get_collection(
+        self, artifact_type: ArtifactType, location: Repository
+    ) -> Optional["ArtifactCollection"]:
+        return next(
+            (
+                collection
+                for collection in self.collections_list
+                if collection.artifact_type == artifact_type
+                and collection.location == location
+            ),
+            None,
+        )
 
 
 class AcquisitionCreate(AcquisitionBase):
@@ -164,7 +185,7 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     acquisition_id: int = Field(foreign_key="acquisition.id", ondelete="CASCADE")
-    acquisition: Acquisition = Relationship(back_populates="collections")
+    acquisition: Acquisition = Relationship(back_populates="collections_list")
 
     artifacts: list["Artifact"] = Relationship(
         back_populates="collection", cascade_delete=True
@@ -178,6 +199,11 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
             name="unique_acquisition_collection",
         ),
     )
+
+    @computed_field  # type: ignore
+    @property
+    def acquisition_dir(self) -> Path:
+        return get_acquisition_path(self.location, self.acquisition.name)
 
     @computed_field  # type: ignore
     @property
@@ -389,6 +415,6 @@ def get_artifact_collection_path(
 ) -> Path:
     acquisition_path = get_acquisition_path(repository, acquisition_name)
     artifact_collection_file = artifact_type.value.lower()
-    if repository == Repository.ARCHIVE:
+    if repository == Repository.ARCHIVE_STORE:
         artifact_collection_file += TAR_ZST_EXTENSION
     return acquisition_path / artifact_collection_file

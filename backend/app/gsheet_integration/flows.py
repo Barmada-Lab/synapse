@@ -3,6 +3,8 @@ from prefect import flow
 from prefect.blocks.system import Secret
 from prefect.events import DeploymentEventTrigger
 
+from app.acquisition.crud import get_acquisition_by_name
+from app.acquisition.flows.analysis import handle_analyses
 from app.core.config import settings
 from app.core.deps import get_db
 
@@ -13,7 +15,7 @@ from .print_barcodes import PrintBarcodesSheet
 
 
 def get_imaging_spreadsheet() -> gspread.Spreadsheet:
-    token = Secret.load("google-sheets-token").get()
+    token = Secret.load("google-sheets-token").get()  # type: ignore[union-attr]
     gc = gspread.service_account_from_dict(
         token, http_client=gspread.http_client.BackOffHTTPClient
     )
@@ -51,6 +53,9 @@ def sync_google_sheets():
         create_acquisition_plan_sheet.process_sheet()
         create_acquisition_plan_sheet.render(create_acquisition_ws)
 
+        """
+        NOTE: ALWAYS CREATE ACQUISITION PLANS BEFORE ANALYSIS PLANS
+        """
         acquisition_plan_ws = spread.worksheet("acquisition_plans")
         acquisition_plan_sheet = AcquisitionPlanSheet(acquisition_plan_ws, session)
         acquisition_plan_sheet.process_sheet()
@@ -60,6 +65,12 @@ def sync_google_sheets():
         create_analysis_sheet = CreateAnalysisPlanSheet(create_analysis_ws, session)
         create_analysis_sheet.process_sheet()
         create_analysis_sheet.render(create_analysis_ws)
+
+        for acquisition_name in create_analysis_sheet.acquisitions_created:
+            acquisition = get_acquisition_by_name(
+                session=session, name=acquisition_name
+            )
+            handle_analyses(acquisition, session)
 
         analysis_ws = spread.worksheet("analysis_plans")
         analysis_sheet = AnalysisPlanSheet(analysis_ws, session)

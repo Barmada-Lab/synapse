@@ -3,10 +3,6 @@ from prefect.events import DeploymentEventTrigger, ResourceSpecification
 from app.labware.models import Location
 
 from .acquisition_scheduling import check_to_schedule_acquisition
-from .plateread_postprocessing import (
-    handle_submit_analysis_plan,
-    post_plateread_handler,
-)
 
 
 def get_deployments():
@@ -31,24 +27,4 @@ def get_deployments():
                 )
             ],
         ),
-        post_plateread_handler.to_deployment(
-            name="post-acquisition",
-            triggers=[
-                DeploymentEventTrigger(
-                    expect={"acquisition.plateread_completed"},
-                    match=ResourceSpecification(
-                        {
-                            "prefect.resource.id": "plateread.*",
-                            "status.before": "*",
-                        }
-                    ),
-                    parameters={
-                        "plateread_id": "{{ event.resource.id }}",
-                        "before": "{{ event.status.before }}",
-                    },
-                    name="post-acquisition",
-                )
-            ],
-        ),
-        handle_submit_analysis_plan.to_deployment("submit-analysis-plan"),
     ]

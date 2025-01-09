@@ -84,8 +84,8 @@ def test_create_artifact_collection(db: Session) -> None:
     )
 
     acquisition_id = acquisition.id
-    location = Repository.ACQUISITION
-    artifact_type = ArtifactType.ACQUISITION
+    location = Repository.ACQUISITION_STORE
+    artifact_type = ArtifactType.ACQUISITION_DATA
     artifact_collection_create = ArtifactCollectionCreate(
         location=location,
         artifact_type=artifact_type,
@@ -102,14 +102,14 @@ def test_create_artifact_collection(db: Session) -> None:
     assert artifact.acquisition_id == acquisition_id
 
     db.refresh(acquisition)
-    assert acquisition.collections[0].id == artifact.id
+    assert acquisition.collections_list[0].id == artifact.id
 
 
 def test_create_artifact_collection_invalid_acquisition_id(db: Session) -> None:
     acquisition_id = 2**16
     artifact_collection_create = ArtifactCollectionCreate(
-        location=Repository.ACQUISITION,
-        artifact_type=ArtifactType.ACQUISITION,
+        location=Repository.ACQUISITION_STORE,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
         acquisition_id=acquisition_id,
     )
 
@@ -131,8 +131,8 @@ def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
     )
 
     acquisition_id = acquisition.id
-    location = Repository.ACQUISITION
-    artifact_type = ArtifactType.ACQUISITION
+    location = Repository.ACQUISITION_STORE
+    artifact_type = ArtifactType.ACQUISITION_DATA
     artifact_collection_create = ArtifactCollectionCreate(
         location=location,
         artifact_type=artifact_type,
@@ -406,7 +406,7 @@ def test_create_analysis_spec(db: Session) -> None:
     plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
     assert plan.id
     spec_create = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
+        trigger=AnalysisTrigger.END_OF_RUN,
         analysis_cmd="echo",
         analysis_args=["hello"],
         analysis_plan_id=plan.id,
@@ -422,7 +422,7 @@ def test_delete_analysis_spec(db: Session) -> None:
     plan = crud.create_analysis_plan(session=db, acquisition_id=acquisition.id)
     assert plan.id
     spec_create = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
+        trigger=AnalysisTrigger.END_OF_RUN,
         analysis_cmd="echo",
         analysis_args=["hello"],
         analysis_plan_id=plan.id,

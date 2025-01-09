@@ -21,12 +21,22 @@ class CreateAnalysisPlanRecord(BaseModel):
     acquisition_name: str
     analysis_cmd: str
     analysis_args: str
+    analysis_trigger: AnalysisTrigger
+    trigger_value: int | None
 
 
 class CreateAnalysisPlanSheet(RecordSheet[CreateAnalysisPlanRecord]):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.acquisitions_created = set()
+
     def parse_row(
         self, row: dict[str, Any]
     ) -> Result[CreateAnalysisPlanRecord, RowError]:
+        if row["trigger_value"] == "":
+            row["trigger_value"] = None
+        else:
+            row["trigger_value"] = int(row["trigger_value"])
         try:
             record = CreateAnalysisPlanRecord.model_validate(row)
             return Success(record)
@@ -41,6 +51,7 @@ class CreateAnalysisPlanSheet(RecordSheet[CreateAnalysisPlanRecord]):
             return Failure(
                 RowError(row=record.model_dump(), message="Acquisition not found")
             )
+        self.acquisitions_created.add(acquisition.name)
         analysis_plan = acquisition.analysis_plan
         if not analysis_plan:
             analysis_plan = crud.create_analysis_plan(
@@ -49,7 +60,8 @@ class CreateAnalysisPlanSheet(RecordSheet[CreateAnalysisPlanRecord]):
             )
         try:
             sbatch = SBatchAnalysisSpecCreate(
-                trigger=AnalysisTrigger.POST_ACQUISTION,
+                trigger=record.analysis_trigger,
+                trigger_value=record.trigger_value,
                 analysis_cmd=record.analysis_cmd,
                 analysis_args=record.analysis_args.split(","),
                 analysis_plan_id=analysis_plan.id,
@@ -74,6 +86,8 @@ class AnalysisPlanRecord(BaseModel):
     acquisition_name: str
     analysis_cmd: str
     analysis_args: str
+    analysis_trigger: AnalysisTrigger
+    trigger_value: int | None
     analysis_status: SlurmJobStatus
     action: AnalysisPlanRecordAction
 
@@ -83,6 +97,8 @@ class AnalysisPlanRecord(BaseModel):
             acquisition_name=spec.analysis_plan.acquisition.name,
             analysis_cmd=spec.analysis_cmd,
             analysis_args=",".join(spec.analysis_args),
+            analysis_trigger=spec.trigger,
+            trigger_value=spec.trigger_value,
             analysis_status=spec.status,
             action=AnalysisPlanRecord.AnalysisPlanRecordAction.none,
         )

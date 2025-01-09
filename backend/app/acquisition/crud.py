@@ -78,10 +78,10 @@ def create_artifact(
 
 
 # TODO: write tests
-def create_artifact_collection_replica(
+def create_artifact_collection_copy(
     *, session: Session, artifact_collection: ArtifactCollection, location: Repository
 ) -> ArtifactCollection:
-    other_artifact_collections = artifact_collection.acquisition.collections
+    other_artifact_collections = artifact_collection.acquisition.collections_list
     if artifact_collection.location == location or any(
         other.location == location for other in other_artifact_collections
     ):

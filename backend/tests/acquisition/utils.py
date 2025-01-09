@@ -23,9 +23,11 @@ from app.acquisition.models import (
     ArtifactCollectionCreate,
     ArtifactType,
     ImagingPriority,
+    ProcessStatus,
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
+    Wellplate,
 )
 from app.labware.models import Location
 from tests.labware.events import create_random_wellplate
@@ -50,13 +52,20 @@ def create_random_analysis_plan(
 
 
 def create_random_analysis_spec(
-    *, session: Session, acquisition: Acquisition | None = None
+    *,
+    session: Session,
+    analysis_trigger: AnalysisTrigger | None = None,
+    trigger_value: int | None = None,
+    acquisition: Acquisition | None = None,
 ) -> SBatchAnalysisSpec:
     analysis_plan = create_random_analysis_plan(
         session=session, acquisition=acquisition
     )
+    if analysis_trigger is None:
+        analysis_trigger = random.choice(list(AnalysisTrigger))
     analysis_create = SBatchAnalysisSpecCreate(
-        trigger=random.choice(list(AnalysisTrigger)),
+        trigger=analysis_trigger,
+        trigger_value=trigger_value,
         analysis_cmd=random_lower_string(),
         analysis_args=[random_lower_string()],
         analysis_plan_id=analysis_plan.id,
@@ -68,20 +77,25 @@ def create_random_analysis_spec(
 
 
 def create_random_acquisition_plan(
-    *, session: Session, wellplate_id: int | None = None, **kwargs
+    *,
+    session: Session,
+    acquisition: Acquisition | None = None,
+    wellplate_id: int | None = None,
+    **kwargs,
 ) -> AcquisitionPlan:
     kwargs.setdefault("name", random_lower_string())
-    acquisition_create = AcquisitionCreate(name=kwargs["name"])
-    acquisition = create_acquisition(
-        session=session, acquisition_create=acquisition_create
-    )
+    if acquisition is None:
+        acquisition_create = AcquisitionCreate(name=kwargs["name"])
+        acquisition = create_acquisition(
+            session=session, acquisition_create=acquisition_create
+        )
 
     if wellplate_id is None:
         wellplate = create_random_wellplate(session=session)
         wellplate_id = int(wellplate.id)
 
     kwargs.setdefault("wellplate_id", wellplate_id)
-    kwargs.setdefault("storage_location", Location.CQ1)
+    kwargs.setdefault("storage_location", Location.CYTOMAT2)
     kwargs.setdefault("protocol_name", random_lower_string())
     kwargs.setdefault("n_reads", 1)
     kwargs.setdefault("interval", timedelta(minutes=1))
@@ -104,13 +118,16 @@ def create_random_acquisition_plan(
 def create_random_artifact_collection(
     *,
     session: Session,
-    artifact_type: ArtifactType = ArtifactType.ACQUISITION,
-    location: Repository = Repository.ACQUISITION,
+    artifact_type: ArtifactType = ArtifactType.ACQUISITION_DATA,
+    location: Repository = Repository.ACQUISITION_STORE,
+    acquisition: Acquisition | None = None,
 ) -> ArtifactCollection:
-    acquisition_create = AcquisitionCreate(name=random_lower_string())
-    acquisition = create_acquisition(
-        session=session, acquisition_create=acquisition_create
-    )
+    if acquisition is None:
+        acquisition_create = AcquisitionCreate(name=random_lower_string())
+        acquisition = create_acquisition(
+            session=session, acquisition_create=acquisition_create
+        )
+
     artifact_collection_create = ArtifactCollectionCreate(
         acquisition_id=acquisition.id, artifact_type=artifact_type, location=location
     )
@@ -123,3 +140,27 @@ def create_random_artifact_collection(
     with tempfile.NamedTemporaryFile(dir=collection.path, delete=False) as f:
         f.write(os.urandom(1024))
     return collection
+
+
+def move_plate_to_acquisition_plan_location(
+    wellplate: Wellplate, acquisition_plan: AcquisitionPlan, session: Session
+):
+    wellplate.location = acquisition_plan.storage_location
+    session.add(wellplate)
+    session.commit()
+    session.refresh(acquisition_plan)
+    return wellplate
+
+
+def complete_reads(acquisition_plan: AcquisitionPlan, session: Session):
+    for read in acquisition_plan.schedule:
+        read.status = ProcessStatus.COMPLETED
+        session.add(read)
+    session.commit()
+    session.refresh(acquisition_plan)
+    create_random_artifact_collection(
+        session=session,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ACQUISITION_STORE,
+        acquisition=acquisition_plan.acquisition,
+    )

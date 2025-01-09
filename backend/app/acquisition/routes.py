@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Response, status
+from fastapi_events.dispatcher import dispatch
 from sqlmodel import func, select
 
 from app.core.deps import SessionDep
@@ -6,7 +7,7 @@ from app.labware.models import Wellplate
 from app.users.deps import CurrentActiveUserDep
 
 from . import crud
-from .events import emit_plateread_status_update
+from .events import AnalysisStatusUpdate, PlatereadStatusUpdate
 from .models import (
     Acquisition,
     AcquisitionCreate,
@@ -96,6 +97,19 @@ def create_analysis_plan(
     return AnalysisPlanRecord.model_validate(plan)
 
 
+@api_router.get(
+    "/analysis_plans/{id}",
+    response_model=AnalysisPlanRecord,
+)
+def get_analysis_plan(session: SessionDep, id: int) -> AnalysisPlanRecord:
+    analysis_plan = session.get(AnalysisPlan, id)
+    if not analysis_plan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Analysis plan not found."
+        )
+    return AnalysisPlanRecord.model_validate(analysis_plan)
+
+
 @api_router.delete("/analysis_plans/{id}")
 def delete_analysis_plan(session: SessionDep, id: int) -> Response:
     analysis_plan = session.get(AnalysisPlan, id)
@@ -140,9 +154,17 @@ def update_sbatch_analysis_spec(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Analysis specification not found.",
         )
+    status_updated = analysis.status != update.status
     updated = crud.update_analysis_spec(
         session=session, db_analysis=analysis, update=update
     )
+    if status_updated:
+        dispatch(
+            AnalysisStatusUpdate(
+                analysis_id=updated.id,  # type: ignore[arg-type]
+                status=updated.status,
+            )
+        )
     return SBatchAnalysisSpecRecord.model_validate(updated)
 
 
@@ -212,12 +234,16 @@ def update_plateread(
             status_code=status.HTTP_404_NOT_FOUND, detail="Plate-read not found"
         )
 
-    original_status = plateread_db.status
+    status_updated = plateread_db.status != plateread_in.status
     crud.update_plateread(
         session=session, db_plateread=plateread_db, plateread_in=plateread_in
     )
 
-    if original_status != plateread_db.status:
-        emit_plateread_status_update(plateread=plateread_db, before=plateread_db.status)
-
+    if status_updated:
+        dispatch(
+            PlatereadStatusUpdate(
+                plateread_id=plateread_db.id,  # type: ignore[arg-type]
+                status=plateread_db.status,
+            )
+        )
     return PlatereadSpecRecord.model_validate(plateread_db)

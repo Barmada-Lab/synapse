@@ -12,6 +12,7 @@ from app.acquisition.models import (
     AcquisitionPlanCreate,
     AcquisitionRecord,
     AnalysisPlanCreate,
+    AnalysisPlanRecord,
     AnalysisTrigger,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
@@ -130,6 +131,21 @@ def test_create_analysis_plan_duplicate_returns_409(
     assert response.json()["detail"] == "Acquisition already has an analysis plan."
 
 
+def test_get_analysis_plan(pw_authenticated_client: TestClient, db: Session) -> None:
+    acquisition = create_random_acquisition(session=db)
+    json = AnalysisPlanCreate(acquisition_id=acquisition.id)
+    response = pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/analysis_plans",
+        json=json.model_dump(mode="json"),
+    )
+    plan = AnalysisPlanRecord.model_validate(response.json())
+    response = pw_authenticated_client.get(
+        f"{settings.API_V1_STR}/analysis_plans/{plan.id}"
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert AnalysisPlanRecord.model_validate(response.json())
+
+
 def test_create_analysis_plan_invalid_acquisition_id(
     pw_authenticated_client: TestClient,
 ) -> None:
@@ -152,10 +168,10 @@ def test_delete_analysis_plan_by_id(
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # the plan should be deleted from the database
-    db.reset()  # reset to session cache
-    assert (
-        db.get(AcquisitionPlan, plan.id) is None
-    )  # TODO: flaky- need to replace this with API call
+    response = pw_authenticated_client.get(
+        f"{settings.API_V1_STR}/analysis_plans/{plan.id}",
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_delete_analysis_plan_by_id_not_found(
@@ -183,7 +199,7 @@ def test_create_analysis_plan_requires_authentication(
 def test_create_analysis(pw_authenticated_client: TestClient, db: Session) -> None:
     analysis_plan = create_random_analysis_plan(session=db)
     analysis = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
+        trigger=AnalysisTrigger.END_OF_RUN,
         analysis_cmd=random_lower_string(),
         analysis_args=[random_lower_string()],
         analysis_plan_id=analysis_plan.id,
@@ -199,7 +215,7 @@ def test_create_analysis_invalid_analysis_plan_id(
     pw_authenticated_client: TestClient,
 ) -> None:
     analysis = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
+        trigger=AnalysisTrigger.END_OF_RUN,
         analysis_cmd=random_lower_string(),
         analysis_args=[random_lower_string()],
         analysis_plan_id=2**16,
@@ -216,7 +232,7 @@ def test_create_analysis_requires_authentication(
     unauthenticated_client: TestClient,
 ) -> None:
     analysis = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
+        trigger=AnalysisTrigger.END_OF_RUN,
         analysis_cmd=random_lower_string(),
         analysis_args=[random_lower_string()],
         analysis_plan_id=0,
@@ -263,7 +279,7 @@ def test_update_analysis_requires_authentication(
 def test_delete_analysis(pw_authenticated_client: TestClient, db: Session) -> None:
     analysis_plan = create_random_analysis_plan(session=db)
     analysis_create = SBatchAnalysisSpecCreate(
-        trigger=AnalysisTrigger.POST_ACQUISTION,
+        trigger=AnalysisTrigger.END_OF_RUN,
         analysis_cmd=random_lower_string(),
         analysis_args=[random_lower_string()],
         analysis_plan_id=analysis_plan.id,
@@ -423,7 +439,7 @@ def test_update_plateread_emit_event(
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
-    with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
+    with patch("app.acquisition.routes.dispatch") as mock:
         response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/platereads/{read.id}",
             json={"status": "RUNNING"},
@@ -448,7 +464,7 @@ def test_update_plateread_no_change(
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
-    with patch("app.acquisition.routes.emit_plateread_status_update") as mock:
+    with patch("app.acquisition.routes.dispatch") as mock:
         response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/platereads/{read.id}",
             json={"status": read.status.value},

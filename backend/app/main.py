@@ -3,6 +3,9 @@ from importlib.metadata import version
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from fastapi_events.handlers.local import local_handler
+from fastapi_events.middleware import EventHandlerASGIMiddleware
+from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -21,6 +24,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
     version=version("app"),
+    middleware=[Middleware(EventHandlerASGIMiddleware, handlers=[local_handler])],
 )
 
 # Set all CORS enabled origins
