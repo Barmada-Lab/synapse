@@ -12,6 +12,7 @@ from app.acquisition import crud
 from app.acquisition.consts import TAR_ZST_EXTENSION
 from app.acquisition.models import (
     ArtifactCollection,
+    ArtifactCreate,
     Repository,
 )
 from app.common.proc import run_subprocess
@@ -186,3 +187,29 @@ def move_collection(
     new_collection = copy_collection(collection=collection, dest=dest, session=session)
     cleanup(collection, session)
     return new_collection
+
+
+@task
+def update_collection_artifacts(collection: ArtifactCollection, session: Session):
+    if collection.location == Repository.ARCHIVE_STORE:
+        raise ValueError("Cannot update artifacts in archive store")
+
+    """ Sync database records with filesystem artifacts """
+    not_seen = {artifact.name for artifact in collection.artifacts}
+    for artifact_path in collection.path.iterdir():
+        if artifact_path.name in not_seen:
+            not_seen.remove(artifact_path.name)
+            continue
+        crud.create_artifact(
+            session=session,
+            artifact_create=ArtifactCreate(
+                name=artifact_path.name,
+                collection_id=collection.id,
+            ),
+        )
+    for artifact_name in not_seen:
+        artifact = crud.get_artifact_by_name(
+            session=session, collection=collection, name=artifact_name
+        )
+        session.delete(artifact)
+    session.commit()

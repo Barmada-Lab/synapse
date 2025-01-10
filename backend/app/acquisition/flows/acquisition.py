@@ -2,9 +2,14 @@ import logging
 
 from prefect import flow
 
+from app.acquisition import crud
 from app.acquisition.flows.analysis import handle_analyses
+from app.acquisition.flows.artifact_collections import update_collection_artifacts
 from app.acquisition.models import (
+    ArtifactCollectionCreate,
+    ArtifactType,
     PlatereadSpec,
+    Repository,
 )
 from app.core.deps import get_db
 
@@ -20,4 +25,21 @@ async def on_plateread_completed(plateread_id: int):
             raise ValueError(f"Plateread {plateread_id} has no acquisition plan")
 
         acquisition = plateread.acquisition_plan.acquisition
-        await handle_analyses(acquisition, session)
+
+        # Check for new acquisition data
+        collection = acquisition.get_collection(
+            ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
+        )
+        if not collection:
+            collection = crud.create_artifact_collection(
+                session=session,
+                artifact_collection_create=ArtifactCollectionCreate(
+                    location=Repository.ACQUISITION_STORE,
+                    artifact_type=ArtifactType.ACQUISITION_DATA,
+                    acquisition_id=acquisition.id,  # type: ignore[arg-type]
+                ),
+            )
+        update_collection_artifacts(collection=collection, session=session)
+
+        # Handle analyses
+        handle_analyses(acquisition, session)

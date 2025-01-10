@@ -94,7 +94,6 @@ def test_create_artifact_collection(db: Session) -> None:
 
     artifact = crud.create_artifact_collection(
         session=db,
-        acquisition_id=acquisition_id,  # type: ignore
         artifact_collection_create=artifact_collection_create,
     )
     assert artifact.location == location
@@ -116,7 +115,6 @@ def test_create_artifact_collection_invalid_acquisition_id(db: Session) -> None:
     with pytest.raises(IntegrityError) as e:
         crud.create_artifact_collection(
             session=db,
-            acquisition_id=acquisition_id,
             artifact_collection_create=artifact_collection_create,
         )
         assert "Acquisition not found" in str(e)
@@ -141,13 +139,11 @@ def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
 
     _ = crud.create_artifact_collection(
         session=db,
-        acquisition_id=acquisition_id,  # type: ignore
         artifact_collection_create=artifact_collection_create,
     )
     with pytest.raises(IntegrityError):
         crud.create_artifact_collection(
             session=db,
-            acquisition_id=acquisition_id,  # type: ignore
             artifact_collection_create=artifact_collection_create,
         )
     db.rollback()
@@ -171,7 +167,6 @@ def test_create_artifact(db: Session) -> None:
     assert collection.id
     crud.create_artifact(
         session=db,
-        artifact_collection_id=collection.id,
         artifact_create=artifact_create,
     )
 
@@ -184,7 +179,6 @@ def test_delete_artifact_cascade_from_artifact_collection_delete(db: Session) ->
     assert collection.id
     artifact = crud.create_artifact(
         session=db,
-        artifact_collection_id=collection.id,
         artifact_create=artifact_create,
     )
     db.delete(collection)

@@ -1,4 +1,6 @@
+import os
 from subprocess import CalledProcessError
+from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 
 import pytest
@@ -6,7 +8,11 @@ from returns.io import IOFailure
 from returns.primitives.exceptions import UnwrapFailedError
 from sqlmodel import Session
 
-from app.acquisition.flows.artifact_collections import copy_collection, move_collection
+from app.acquisition.flows.artifact_collections import (
+    copy_collection,
+    move_collection,
+    update_collection_artifacts,
+)
 from app.acquisition.models import ArtifactType, Repository
 from tests.acquisition.utils import create_random_artifact_collection
 
@@ -147,3 +153,28 @@ def test_move_collection_transfer_fails(db: Session):
             pass
 
         assert orig_collection.path.exists()
+
+
+def test_update_collection_artifacts_addition(db: Session):
+    """Discovers new artifacts"""
+    collection = create_random_artifact_collection(session=db)
+    assert len(collection.artifacts) == 1
+    with NamedTemporaryFile(dir=collection.path, delete=False) as f:
+        f.write(b"test")
+    update_collection_artifacts(collection=collection, session=db)
+    assert len(collection.artifacts) == 2
+
+
+def test_update_collection_artifacts_deletion(db: Session):
+    """Deletes missing artifacts"""
+    collection = create_random_artifact_collection(session=db)
+    os.remove(collection.path / collection.artifacts[0].name)
+    update_collection_artifacts(collection=collection, session=db)
+    assert len(collection.artifacts) == 0
+
+
+def test_update_collection_artifacts_no_change(db: Session):
+    """No change in artifacts"""
+    collection = create_random_artifact_collection(session=db)
+    update_collection_artifacts(collection=collection, session=db)
+    assert len(collection.artifacts) == 1

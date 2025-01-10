@@ -10,6 +10,7 @@ from app.acquisition.crud import (
     create_acquisition_plan,
     create_analysis_plan,
     create_analysis_spec,
+    create_artifact,
     create_artifact_collection,
 )
 from app.acquisition.models import (
@@ -21,6 +22,7 @@ from app.acquisition.models import (
     AnalysisTrigger,
     ArtifactCollection,
     ArtifactCollectionCreate,
+    ArtifactCreate,
     ArtifactType,
     ImagingPriority,
     ProcessStatus,
@@ -133,12 +135,15 @@ def create_random_artifact_collection(
     )
     collection = create_artifact_collection(
         session=session,
-        acquisition_id=acquisition.id,  # type: ignore
         artifact_collection_create=artifact_collection_create,
     )
     collection.path.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=collection.path, delete=False) as f:
         f.write(os.urandom(1024))
+        create_artifact(
+            session=session,
+            artifact_create=ArtifactCreate(name=f.name, collection_id=collection.id),
+        )
     return collection
 
 

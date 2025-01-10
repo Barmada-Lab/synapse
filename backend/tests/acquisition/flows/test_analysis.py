@@ -19,6 +19,7 @@ from tests.acquisition.utils import (
     create_random_acquisition,
     create_random_acquisition_plan,
     create_random_analysis_spec,
+    create_random_artifact_collection,
     move_plate_to_acquisition_plan_location,
 )
 
@@ -26,6 +27,7 @@ from tests.acquisition.utils import (
 def test_handle_analyses_no_acquisition_plan(db: Session):
     """Only calls end_of_run_analyses"""
     acquisition = create_random_acquisition(session=db)
+    create_random_artifact_collection(session=db, acquisition=acquisition)
     with patch("app.acquisition.flows.analysis.handle_end_of_run_analyses") as mock:
         handle_analyses(acquisition=acquisition, session=db)
         mock.assert_called_once_with(acquisition, db)
@@ -34,6 +36,7 @@ def test_handle_analyses_no_acquisition_plan(db: Session):
 def test_handle_analyses_with_incomplete_acquisition(db: Session):
     """Only calls post_read_analyses"""
     acquisition = create_random_acquisition(session=db)
+    create_random_artifact_collection(session=db, acquisition=acquisition)
     acquisition_plan = create_random_acquisition_plan(
         session=db, acquisition=acquisition, n_reads=1
     )

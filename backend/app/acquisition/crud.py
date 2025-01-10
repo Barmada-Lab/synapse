@@ -41,12 +41,9 @@ def get_acquisition_by_name(*, session: Session, name: str) -> Acquisition | Non
 def create_artifact_collection(
     *,
     session: Session,
-    acquisition_id: int,
     artifact_collection_create: ArtifactCollectionCreate,
 ) -> ArtifactCollection:
-    db_obj = ArtifactCollection.model_validate(
-        artifact_collection_create, update={"acquisition_id": acquisition_id}
-    )
+    db_obj = ArtifactCollection.model_validate(artifact_collection_create)
     session.add(db_obj)
     session.commit()
     session.refresh(db_obj)
@@ -65,16 +62,23 @@ def get_artifact_collection_by_key(
     return session.exec(statement).first()
 
 
-def create_artifact(
-    *, session: Session, artifact_collection_id: int, artifact_create: ArtifactCreate
-) -> Artifact:
-    db_obj = Artifact.model_validate(
-        artifact_create, update={"collection_id": artifact_collection_id}
-    )
+def create_artifact(*, session: Session, artifact_create: ArtifactCreate) -> Artifact:
+    db_obj = Artifact.model_validate(artifact_create)
     session.add(db_obj)
     session.commit()
     session.refresh(db_obj)
     return db_obj
+
+
+def get_artifact_by_name(
+    *, session: Session, collection: ArtifactCollection, name: str
+) -> Artifact | None:
+    statement = (
+        select(Artifact)
+        .where(Artifact.collection_id == collection.id)
+        .where(Artifact.name == name)
+    )
+    return session.exec(statement).first()
 
 
 # TODO: write tests
@@ -92,19 +96,16 @@ def create_artifact_collection_copy(
         artifact_type=artifact_collection.artifact_type,
         acquisition_id=artifact_collection.acquisition_id,
     )
-    acquisition_id = artifact_collection.acquisition_id
     created = create_artifact_collection(
         session=session,
-        acquisition_id=acquisition_id,
         artifact_collection_create=create,
     )
 
     for artifact in artifact_collection.artifacts:
         create_artifact(
             session=session,
-            artifact_collection_id=created.id,  # type: ignore
             artifact_create=ArtifactCreate(
-                name=artifact.name,
+                name=artifact.name, collection_id=created.id
             ),
         )
 

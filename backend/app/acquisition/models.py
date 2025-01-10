@@ -214,7 +214,7 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
 
 
 class ArtifactCollectionCreate(ArtifactCollectionBase):
-    pass
+    acquisition_id: int
 
 
 class ArtifactCollectionRecord(ArtifactCollectionBase):
@@ -234,7 +234,7 @@ class Artifact(SQLModel, table=True):
 
 
 class ArtifactCreate(ArtifactBase):
-    pass
+    collection_id: int
 
 
 class ArtifactRecord(ArtifactBase):
