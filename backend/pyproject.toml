@@ -51,12 +51,6 @@ dev-dependencies = [
 [tool.uv.sources]
 synapse-greatlakes = { git = "git+ssh://git@github.com/Barmada-Lab/synapse-greatlakes.git" }
 
-[tool.pytest.ini_options]
-addopts = [
-    "--import-mode=importlib"
-]
-
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
