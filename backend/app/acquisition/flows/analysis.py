@@ -110,6 +110,40 @@ def handle_post_read_analyses(
 
 
 @task
+def handle_immediate_analyses(acquisition: Acquisition, session: Session):
+    logger = get_run_logger()
+    if not acquisition.analysis_plan:
+        logger.info(f"No analysis plan found for acquisition {acquisition.name}")
+        return
+
+    analyses = [
+        analysis
+        for analysis in acquisition.analysis_plan.sbatch_analyses
+        if analysis.trigger == AnalysisTrigger.IMMEDIATE
+    ]
+
+    acquisition_data = acquisition.get_collection(
+        ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
+    )
+    if not acquisition_data:
+        raise ValueError(
+            f"Acquisition {acquisition.id} has no acquisition collection; how \
+                can this be?"
+        )
+
+    copy_collection(
+        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
+    )
+
+    for analysis in analyses:
+        logger.info(
+            f"Submitting immediate analysis {analysis} for acquisition \
+                {acquisition.name}"
+        )
+        submit_analysis_request(analysis, session)
+
+
+@task
 def handle_analyses(acquisition: Acquisition, session: Session):
     """
     Handles submitting analysis plans for an acquisition, depending on the
@@ -125,6 +159,8 @@ def handle_analyses(acquisition: Acquisition, session: Session):
         )
         return
 
+    handle_immediate_analyses(acquisition, session)
+
     if acquisition.acquisition_plan:
         n_complete = sum(
             read.status == ProcessStatus.COMPLETED
@@ -137,10 +173,3 @@ def handle_analyses(acquisition: Acquisition, session: Session):
         handle_post_read_analyses(n_complete, acquisition, session)
         if n_end_states == total_reads:
             handle_end_of_run_analyses(acquisition, session)
-
-    else:
-        logger.info(
-            f"No acquisition plan found for {acquisition.name} while handling \
-                analyses, checking for end-of-run analyses"
-        )
-        handle_end_of_run_analyses(acquisition, session)

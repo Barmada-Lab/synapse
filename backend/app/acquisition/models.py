@@ -70,6 +70,7 @@ class ArtifactType(str, enum.Enum):
 class AnalysisTrigger(str, enum.Enum):
     END_OF_RUN = "END_OF_RUN"
     POST_READ = "POST_READ"
+    IMMEDIATE = "IMMEDIATE"
 
 
 #################################################################################
