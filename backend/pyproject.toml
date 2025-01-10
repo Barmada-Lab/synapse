@@ -29,6 +29,7 @@ dependencies = [
     "gspread>=6.1.4",
     "gspread-formatting>=1.2.0",
     "pandas>=2.2.3",
+    "fastapi-events>=0.12.2",
 ]
 
 [project.scripts]
