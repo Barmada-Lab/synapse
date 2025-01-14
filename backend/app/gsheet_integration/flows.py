@@ -66,12 +66,6 @@ def sync_google_sheets():
         create_analysis_sheet.process_sheet()
         create_analysis_sheet.render(create_analysis_ws)
 
-        for acquisition_name in create_analysis_sheet.acquisitions_created:
-            acquisition = get_acquisition_by_name(
-                session=session, name=acquisition_name
-            )
-            handle_analyses(acquisition, session)
-
         analysis_ws = spread.worksheet("analysis_plans")
         analysis_sheet = AnalysisPlanSheet(analysis_ws, session)
         analysis_sheet.process_sheet()
@@ -81,6 +75,13 @@ def sync_google_sheets():
         print_barcodes_sheet = PrintBarcodesSheet(print_barcodes_ws, session)
         print_barcodes_sheet.process_sheet()
         print_barcodes_sheet.render(print_barcodes_ws)
+
+        # ... lastly,
+        for acquisition_name in create_analysis_sheet.acquisitions_created:
+            acquisition = get_acquisition_by_name(
+                session=session, name=acquisition_name
+            )
+            handle_analyses(acquisition, session)
 
 
 def get_deployments():
