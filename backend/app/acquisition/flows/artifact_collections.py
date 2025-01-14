@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from prefect import get_run_logger, task
+from prefect.cache_policies import NONE
 from pydantic import DirectoryPath
 from sqlmodel import Session
 
@@ -102,12 +103,13 @@ def _retrieve_cmd(origin: Path, dest_base: DirectoryPath) -> DirectoryPath:
     return dest
 
 
+@task(cache_policy=NONE)
 def get_dest_path(collection: ArtifactCollection, dest: Repository) -> DirectoryPath:
     relpath = collection.acquisition_dir.relative_to(collection.location.path)
     return dest.path / relpath
 
 
-@task
+@task(cache_policy=NONE)
 def retrieve(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Retrieving archived {collection} to {dest}")
@@ -116,7 +118,7 @@ def retrieve(collection: ArtifactCollection, dest: Repository):
     _retrieve_cmd(collection.path, dest_path)
 
 
-@task
+@task(cache_policy=NONE)
 def archive(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Archiving {collection} to {dest}")
@@ -125,7 +127,7 @@ def archive(collection: ArtifactCollection, dest: Repository):
     _archive_cmd(collection.path, dest_path)
 
 
-@task
+@task(cache_policy=NONE)
 def sync(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Syncing {collection} to {dest}")
@@ -134,7 +136,7 @@ def sync(collection: ArtifactCollection, dest: Repository):
     _sync_cmd(collection.path, dest_path)
 
 
-@task
+@task(cache_policy=NONE)
 def copy_collection(
     *, collection: ArtifactCollection, dest: Repository, session: Session
 ) -> ArtifactCollection:
@@ -173,14 +175,14 @@ def _cleanup_cmd(path: Path):
         raise e
 
 
-@task
+@task(cache_policy=NONE)
 def cleanup(collection: ArtifactCollection, session: Session):
     _cleanup_cmd(collection.path)
     session.delete(collection)
     session.commit()
 
 
-@task
+@task(cache_policy=NONE)
 def move_collection(
     *, collection: ArtifactCollection, dest: Repository, session: Session
 ) -> ArtifactCollection:
@@ -189,7 +191,7 @@ def move_collection(
     return new_collection
 
 
-@task
+@task(cache_policy=NONE)
 def update_collection_artifacts(collection: ArtifactCollection, session: Session):
     if collection.location == Repository.ARCHIVE_STORE:
         raise ValueError("Cannot update artifacts in archive store")

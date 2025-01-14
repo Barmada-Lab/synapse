@@ -236,8 +236,8 @@ def update_plateread(
     if status_updated:
         background_tasks.add_task(
             handle_plateread_status_update,
-            plateread_db.id,
-            plateread_db.status,  # type: ignore[arg-type]
+            plateread_db.id,  # type: ignore[arg-type]
+            plateread_db.status,
         )
 
     return PlatereadSpecRecord.model_validate(plateread_db)
