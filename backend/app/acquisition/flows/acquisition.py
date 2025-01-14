@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @flow
-async def on_plateread_completed(plateread_id: int):
+def on_plateread_completed(plateread_id: int):
     with get_db() as session:
         if not (plateread := session.get(PlatereadSpec, plateread_id)):
             raise ValueError(f"Plateread {plateread_id} not found")

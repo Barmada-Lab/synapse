@@ -1,5 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response, status
-from fastapi_events.dispatcher import dispatch
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
 from sqlmodel import func, select
 
 from app.core.deps import SessionDep
@@ -7,7 +6,7 @@ from app.labware.models import Wellplate
 from app.users.deps import CurrentActiveUserDep
 
 from . import crud
-from .events import AnalysisStatusUpdate, PlatereadStatusUpdate
+from .events import handle_plateread_status_update
 from .models import (
     Acquisition,
     AcquisitionCreate,
@@ -154,17 +153,9 @@ def update_sbatch_analysis_spec(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Analysis specification not found.",
         )
-    status_updated = analysis.status != update.status
     updated = crud.update_analysis_spec(
         session=session, db_analysis=analysis, update=update
     )
-    if status_updated:
-        dispatch(
-            AnalysisStatusUpdate(
-                analysis_id=updated.id,  # type: ignore[arg-type]
-                status=updated.status,
-            )
-        )
     return SBatchAnalysisSpecRecord.model_validate(updated)
 
 
@@ -226,7 +217,10 @@ def delete_acquisition_plan(session: SessionDep, id: int) -> Response:
     response_model=PlatereadSpecRecord,
 )
 def update_plateread(
-    session: SessionDep, id: int, plateread_in: PlatereadSpecUpdate
+    session: SessionDep,
+    id: int,
+    plateread_in: PlatereadSpecUpdate,
+    background_tasks: BackgroundTasks,
 ) -> PlatereadSpecRecord:
     plateread_db = session.get(PlatereadSpec, id)
     if plateread_db is None:
@@ -240,10 +234,10 @@ def update_plateread(
     )
 
     if status_updated:
-        dispatch(
-            PlatereadStatusUpdate(
-                plateread_id=plateread_db.id,  # type: ignore[arg-type]
-                status=plateread_db.status,
-            )
+        background_tasks.add_task(
+            handle_plateread_status_update,
+            plateread_db.id,
+            plateread_db.status,  # type: ignore[arg-type]
         )
+
     return PlatereadSpecRecord.model_validate(plateread_db)
