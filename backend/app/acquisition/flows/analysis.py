@@ -54,15 +54,18 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
                 this be?"
         )
 
-    copy_collection(
-        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
-    )
-
     analyses = [
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.END_OF_RUN
     ]
+
+    if not any(analyses):
+        return
+
+    copy_collection(
+        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
+    )
 
     for analysis in analyses:
         logger.info(
@@ -86,13 +89,6 @@ def handle_post_read_analyses(
         )
         return
 
-    analyses = [
-        analysis
-        for analysis in acquisition.analysis_plan.sbatch_analyses
-        if analysis.trigger == AnalysisTrigger.POST_READ
-        and analysis.trigger_value == read_idx
-    ]
-
     acquisition_data = acquisition.get_collection(
         ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
     )
@@ -102,10 +98,19 @@ def handle_post_read_analyses(
                 can this be?"
         )
 
-    if any(analyses):
-        copy_collection(
-            collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
-        )
+    analyses = [
+        analysis
+        for analysis in acquisition.analysis_plan.sbatch_analyses
+        if analysis.trigger == AnalysisTrigger.POST_READ
+        and analysis.trigger_value == read_idx
+    ]
+
+    if not any(analyses):
+        return
+
+    copy_collection(
+        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
+    )
 
     for analysis in analyses:
         logger.info(
@@ -122,12 +127,6 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
         logger.info(f"No analysis plan found for acquisition {acquisition.name}")
         return
 
-    analyses = [
-        analysis
-        for analysis in acquisition.analysis_plan.sbatch_analyses
-        if analysis.trigger == AnalysisTrigger.IMMEDIATE
-    ]
-
     acquisition_data = acquisition.get_collection(
         ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
     )
@@ -136,6 +135,15 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
             f"Acquisition {acquisition.id} has no acquisition collection; how \
                 can this be?"
         )
+
+    analyses = [
+        analysis
+        for analysis in acquisition.analysis_plan.sbatch_analyses
+        if analysis.trigger == AnalysisTrigger.IMMEDIATE
+    ]
+
+    if not any(analyses):
+        return
 
     copy_collection(
         collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
