@@ -2313,8 +2313,8 @@ wheels = [
 
 [[package]]
 name = "synapse-greatlakes"
-version = "0.2.7"
-source = { git = "ssh://git@github.com/Barmada-Lab/synapse-greatlakes.git#20172a80a2bad16aadcea81e6e3ef3f3df9aafa0" }
+version = "0.2.8"
+source = { git = "ssh://git@github.com/Barmada-Lab/synapse-greatlakes.git#4c0c1358264fef190371128c06e50674e6462757" }
 dependencies = [
     { name = "prefect" },
     { name = "prefect-github" },
