@@ -4,7 +4,10 @@ from prefect import flow
 
 from app.acquisition import crud
 from app.acquisition.flows.analysis import handle_analyses
-from app.acquisition.flows.artifact_collections import update_collection_artifacts
+from app.acquisition.flows.artifact_collections import (
+    move_collection,
+    update_collection_artifacts,
+)
 from app.acquisition.models import (
     ArtifactCollectionCreate,
     ArtifactType,
@@ -39,7 +42,16 @@ def on_plateread_completed(plateread_id: int):
                     acquisition_id=acquisition.id,  # type: ignore[arg-type]
                 ),
             )
-        update_collection_artifacts(collection=collection, session=session)
 
-        # Handle analyses
+        update_collection_artifacts(collection=collection, session=session)
         handle_analyses(acquisition, session)
+
+        n_endstates = sum(
+            read.status.is_endstate for read in plateread.acquisition_plan.schedule
+        )
+        total_reads = plateread.acquisition_plan.n_reads
+        if n_endstates == total_reads:
+            # archive acquisition data
+            move_collection(
+                collection=collection, dest=Repository.ARCHIVE_STORE, session=session
+            )

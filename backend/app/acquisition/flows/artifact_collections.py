@@ -104,34 +104,34 @@ def _retrieve_cmd(origin: Path, dest_base: DirectoryPath) -> DirectoryPath:
 
 
 @task(cache_policy=NONE)
-def get_dest_path(collection: ArtifactCollection, dest: Repository) -> DirectoryPath:
+def _get_dest_path(collection: ArtifactCollection, dest: Repository) -> DirectoryPath:
     relpath = collection.acquisition_dir.relative_to(collection.location.path)
     return dest.path / relpath
 
 
 @task(cache_policy=NONE)
-def retrieve(collection: ArtifactCollection, dest: Repository):
+def _retrieve(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Retrieving archived {collection} to {dest}")
-    dest_path = get_dest_path(collection, dest)
+    dest_path = _get_dest_path(collection, dest)
     dest_path.mkdir(parents=True, exist_ok=True)
     _retrieve_cmd(collection.path, dest_path)
 
 
 @task(cache_policy=NONE)
-def archive(collection: ArtifactCollection, dest: Repository):
+def _archive(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Archiving {collection} to {dest}")
-    dest_path = get_dest_path(collection, dest)
+    dest_path = _get_dest_path(collection, dest)
     dest_path.mkdir(parents=True, exist_ok=True)
     _archive_cmd(collection.path, dest_path)
 
 
 @task(cache_policy=NONE)
-def sync(collection: ArtifactCollection, dest: Repository):
+def _sync(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Syncing {collection} to {dest}")
-    dest_path = get_dest_path(collection, dest)
+    dest_path = _get_dest_path(collection, dest)
     dest_path.mkdir(parents=True, exist_ok=True)
     _sync_cmd(collection.path, dest_path)
 
@@ -142,13 +142,13 @@ def copy_collection(
 ) -> ArtifactCollection:
     match (collection.location, dest):
         case (Repository.ARCHIVE_STORE, _):
-            retrieve(collection, dest)
+            _retrieve(collection, dest)
         case (_, Repository.ARCHIVE_STORE):
-            archive(collection, dest)
+            _archive(collection, dest)
         case (_origin, _dest):
             if _origin == _dest:
                 raise ValueError("Cannot copy to the same location")
-            sync(collection, dest)
+            _sync(collection, dest)
 
     if not (
         new_collection := crud.get_artifact_collection_by_key(

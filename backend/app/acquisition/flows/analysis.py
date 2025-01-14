@@ -5,7 +5,7 @@ from sqlmodel import Session
 from synapse_greatlakes.messages import Message, RequestSubmitJob
 
 from app.acquisition import crud
-from app.acquisition.flows.artifact_collections import copy_collection, move_collection
+from app.acquisition.flows.artifact_collections import copy_collection
 from app.acquisition.models import (
     Acquisition,
     AnalysisTrigger,
@@ -38,8 +38,11 @@ def submit_analysis_request(analysis_spec: SBatchAnalysisSpec, session: Session)
 @task(cache_policy=NONE)
 def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
     logger = get_run_logger()
+    logger.info(f"Handling end-of-run analyses for acquisition {acquisition.name}")
     if not acquisition.analysis_plan:
-        logger.info(f"No analysis plan found for acquisition {acquisition.name}")
+        logger.info(
+            f"No analysis plan found for acquisition {acquisition.name}; skipping end-of-run analyses"
+        )
         return
 
     acquisition_data = acquisition.get_collection(
@@ -53,9 +56,6 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
 
     copy_collection(
         collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
-    )
-    move_collection(
-        collection=acquisition_data, dest=Repository.ARCHIVE_STORE, session=session
     )
 
     analyses = [
@@ -77,8 +77,13 @@ def handle_post_read_analyses(
     read_idx: int, acquisition: Acquisition, session: Session
 ):
     logger = get_run_logger()
+    logger.info(
+        f"Handling post-read analyses for acquisition {acquisition.name}; read_idx: {read_idx}"
+    )
     if not acquisition.analysis_plan:
-        logger.info(f"No analysis plan found for acquisition {acquisition.name}")
+        logger.info(
+            f"No analysis plan found for acquisition {acquisition.name}; skipping post-read analyses"
+        )
         return
 
     analyses = [
