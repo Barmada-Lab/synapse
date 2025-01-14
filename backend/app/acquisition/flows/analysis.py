@@ -2,7 +2,7 @@ from prefect import get_run_logger, task
 from prefect.cache_policies import NONE
 from prefect.events import emit_event
 from sqlmodel import Session
-from synapse_greatlakes.messages import Message, RequestSubmitJob
+from synapse_greatlakes.messages import RequestSubmitJob, SynapseGreatlakesMessage
 
 from app.acquisition import crud
 from app.acquisition.flows.artifact_collections import copy_collection
@@ -20,7 +20,7 @@ from app.acquisition.models import (
 
 @task(cache_policy=NONE)
 def submit_analysis_request(analysis_spec: SBatchAnalysisSpec, session: Session):
-    event = Message(
+    event = SynapseGreatlakesMessage(
         resource=f"sbatch_analysis.{analysis_spec.id}",
         payload=RequestSubmitJob(
             script=analysis_spec.analysis_cmd,
