@@ -87,7 +87,7 @@ class AnalysisPlanRecord(BaseModel):
     analysis_cmd: str
     analysis_args: str
     analysis_trigger: AnalysisTrigger
-    trigger_value: int | None
+    trigger_value: int | None = None
     analysis_status: SlurmJobStatus
     action: AnalysisPlanRecordAction
 
@@ -107,6 +107,8 @@ class AnalysisPlanRecord(BaseModel):
 class AnalysisPlanSheet(RecordSheet[AnalysisPlanRecord]):
     def parse_row(self, row: dict[str, Any]) -> Result[AnalysisPlanRecord, RowError]:
         try:
+            if row["trigger_value"] == "":
+                row["trigger_value"] = None
             record = AnalysisPlanRecord.model_validate(row)
             return Success(record)
         except Exception as e:
