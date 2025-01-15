@@ -150,13 +150,14 @@ def copy_collection(
                 raise ValueError("Cannot copy to the same location")
             _sync(collection, dest)
 
-    if not (
-        new_collection := crud.get_artifact_collection_by_key(
-            session=session,
-            acquisition_id=collection.acquisition_id,
-            key=(dest, collection.artifact_type),
-        )
+    if new_collection := crud.get_artifact_collection_by_key(
+        session=session,
+        acquisition_id=collection.acquisition_id,
+        key=(dest, collection.artifact_type),
     ):
+        if dest != Repository.ARCHIVE_STORE:
+            update_collection_artifacts(new_collection, session)
+    else:
         new_collection = crud.create_artifact_collection_copy(
             session=session,
             artifact_collection=collection,

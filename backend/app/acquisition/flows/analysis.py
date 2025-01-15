@@ -5,7 +5,6 @@ from sqlmodel import Session
 from synapse_greatlakes.messages import RequestSubmitJob, SynapseGreatlakesMessage
 
 from app.acquisition import crud
-from app.acquisition.flows.artifact_collections import copy_collection
 from app.acquisition.models import (
     Acquisition,
     AnalysisTrigger,
@@ -46,12 +45,11 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
         return
 
     acquisition_data = acquisition.get_collection(
-        ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
+        ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
     )
     if not acquisition_data:
         raise ValueError(
-            f"Acquisition {acquisition.id} has no acquisition collection; how can \
-                this be?"
+            f"Acquisition {acquisition.id} has no acquisition collection in {Repository.ANALYSIS_STORE}"
         )
 
     analyses = [
@@ -59,13 +57,6 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.END_OF_RUN
     ]
-
-    if not any(analyses):
-        return
-
-    copy_collection(
-        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
-    )
 
     for analysis in analyses:
         logger.info(
@@ -90,12 +81,11 @@ def handle_post_read_analyses(
         return
 
     acquisition_data = acquisition.get_collection(
-        ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
+        ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
     )
     if not acquisition_data:
         raise ValueError(
-            f"Acquisition {acquisition.id} has no acquisition collection; how \
-                can this be?"
+            f"Acquisition {acquisition.id} has no acquisition collection in {Repository.ANALYSIS_STORE}"
         )
 
     analyses = [
@@ -104,13 +94,6 @@ def handle_post_read_analyses(
         if analysis.trigger == AnalysisTrigger.POST_READ
         and analysis.trigger_value == read_idx
     ]
-
-    if not any(analyses):
-        return
-
-    copy_collection(
-        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
-    )
 
     for analysis in analyses:
         logger.info(
@@ -128,12 +111,11 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
         return
 
     acquisition_data = acquisition.get_collection(
-        ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
+        ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
     )
     if not acquisition_data:
         raise ValueError(
-            f"Acquisition {acquisition.id} has no acquisition collection; how \
-                can this be?"
+            f"Acquisition {acquisition.id} has no acquisition collection in {Repository.ANALYSIS_STORE}"
         )
 
     analyses = [
@@ -141,13 +123,6 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.IMMEDIATE
     ]
-
-    if not any(analyses):
-        return
-
-    copy_collection(
-        collection=acquisition_data, dest=Repository.ANALYSIS_STORE, session=session
-    )
 
     for analysis in analyses:
         logger.info(

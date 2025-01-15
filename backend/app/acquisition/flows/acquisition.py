@@ -5,6 +5,7 @@ from prefect import flow
 from app.acquisition import crud
 from app.acquisition.flows.analysis import handle_analyses
 from app.acquisition.flows.artifact_collections import (
+    copy_collection,
     move_collection,
     update_collection_artifacts,
 )
@@ -30,11 +31,11 @@ def on_plateread_completed(plateread_id: int):
         acquisition = plateread.acquisition_plan.acquisition
 
         # Check for new acquisition data
-        collection = acquisition.get_collection(
+        acquisition_collection = acquisition.get_collection(
             ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
         )
-        if not collection:
-            collection = crud.create_artifact_collection(
+        if not acquisition_collection:
+            acquisition_collection = crud.create_artifact_collection(
                 session=session,
                 artifact_collection_create=ArtifactCollectionCreate(
                     location=Repository.ACQUISITION_STORE,
@@ -43,7 +44,13 @@ def on_plateread_completed(plateread_id: int):
                 ),
             )
 
-        update_collection_artifacts(collection=collection, session=session)
+        update_collection_artifacts(collection=acquisition_collection, session=session)
+        copy_collection(
+            collection=acquisition_collection,
+            dest=Repository.ANALYSIS_STORE,
+            session=session,
+        )
+
         handle_analyses(acquisition, session)
 
         n_endstates = sum(
@@ -53,5 +60,7 @@ def on_plateread_completed(plateread_id: int):
         if n_endstates == total_reads:
             # archive acquisition data
             move_collection(
-                collection=collection, dest=Repository.ARCHIVE_STORE, session=session
+                collection=acquisition_collection,
+                dest=Repository.ARCHIVE_STORE,
+                session=session,
             )
