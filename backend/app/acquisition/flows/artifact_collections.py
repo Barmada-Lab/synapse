@@ -13,7 +13,6 @@ from app.acquisition import crud
 from app.acquisition.consts import TAR_ZST_EXTENSION
 from app.acquisition.models import (
     ArtifactCollection,
-    ArtifactCreate,
     Repository,
 )
 from app.common.proc import run_subprocess
@@ -150,14 +149,13 @@ def copy_collection(
                 raise ValueError("Cannot copy to the same location")
             _sync(collection, dest)
 
-    if new_collection := crud.get_artifact_collection_by_key(
-        session=session,
-        acquisition_id=collection.acquisition_id,
-        key=(dest, collection.artifact_type),
+    if not (
+        new_collection := crud.get_artifact_collection_by_key(
+            session=session,
+            acquisition_id=collection.acquisition_id,
+            key=(dest, collection.artifact_type),
+        )
     ):
-        if dest != Repository.ARCHIVE_STORE:
-            update_collection_artifacts(new_collection, session)
-    else:
         new_collection = crud.create_artifact_collection_copy(
             session=session,
             artifact_collection=collection,
@@ -190,29 +188,3 @@ def move_collection(
     new_collection = copy_collection(collection=collection, dest=dest, session=session)
     cleanup(collection, session)
     return new_collection
-
-
-@task(cache_policy=NONE)  # type: ignore[arg-type]
-def update_collection_artifacts(collection: ArtifactCollection, session: Session):
-    if collection.location == Repository.ARCHIVE_STORE:
-        raise ValueError("Cannot update artifacts in archive store")
-
-    """ Sync database records with filesystem artifacts """
-    not_seen = {artifact.name for artifact in collection.artifacts}
-    for artifact_path in collection.path.iterdir():
-        if artifact_path.name in not_seen:
-            not_seen.remove(artifact_path.name)
-            continue
-        crud.create_artifact(
-            session=session,
-            artifact_create=ArtifactCreate(
-                name=artifact_path.name,
-                collection_id=collection.id,
-            ),
-        )
-    for artifact_name in not_seen:
-        artifact = crud.get_artifact_by_name(
-            session=session, collection=collection, name=artifact_name
-        )
-        session.delete(artifact)
-    session.commit()

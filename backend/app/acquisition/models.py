@@ -188,10 +188,6 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
     acquisition_id: int = Field(foreign_key="acquisition.id", ondelete="CASCADE")
     acquisition: Acquisition = Relationship(back_populates="collections_list")
 
-    artifacts: list["Artifact"] = Relationship(
-        back_populates="collection", cascade_delete=True
-    )
-
     __table_args__ = (
         sa.UniqueConstraint(
             "acquisition_id",
@@ -219,26 +215,6 @@ class ArtifactCollectionCreate(ArtifactCollectionBase):
 
 
 class ArtifactCollectionRecord(ArtifactCollectionBase):
-    id: int
-
-
-class ArtifactBase(SQLModel):
-    name: str
-
-
-class Artifact(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    name: str
-
-    collection_id: int = Field(foreign_key="artifactcollection.id", ondelete="CASCADE")
-    collection: ArtifactCollection = Relationship(back_populates="artifacts")
-
-
-class ArtifactCreate(ArtifactBase):
-    collection_id: int
-
-
-class ArtifactRecord(ArtifactBase):
     id: int
 
 

@@ -15,9 +15,7 @@ from app.acquisition.models import (
     AcquisitionPlan,
     AcquisitionPlanCreate,
     AnalysisTrigger,
-    Artifact,
     ArtifactCollectionCreate,
-    ArtifactCreate,
     ArtifactType,
     ImagingPriority,
     PlatereadSpecUpdate,
@@ -157,33 +155,6 @@ def test_get_artifact_collection_by_key(db: Session) -> None:
         key=(collection.location, collection.artifact_type),
     )
     assert retrieved == collection
-
-
-def test_create_artifact(db: Session) -> None:
-    collection = create_random_artifact_collection(session=db)
-    artifact_create = ArtifactCreate(
-        name=random_lower_string(), collection_id=collection.id
-    )
-    assert collection.id
-    crud.create_artifact(
-        session=db,
-        artifact_create=artifact_create,
-    )
-
-
-def test_delete_artifact_cascade_from_artifact_collection_delete(db: Session) -> None:
-    collection = create_random_artifact_collection(session=db)
-    artifact_create = ArtifactCreate(
-        name=random_lower_string(), collection_id=collection.id
-    )
-    assert collection.id
-    artifact = crud.create_artifact(
-        session=db,
-        artifact_create=artifact_create,
-    )
-    db.delete(collection)
-    db.commit()
-    assert db.get(Artifact, artifact.id) is None
 
 
 def test_create_acquisition_plan(db: Session) -> None:

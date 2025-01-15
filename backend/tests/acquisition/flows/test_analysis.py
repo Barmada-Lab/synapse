@@ -105,14 +105,13 @@ def test_handle_post_read_analyses(db: Session):
     resource_id = f"wellplate.{acquisition_plan.wellplate.name}"
     check_to_schedule_acquisition(resource_id=resource_id)
     complete_reads(acquisition_plan, db)
-    with patch("app.acquisition.flows.analysis.copy_collection") as mock:
-        handle_post_read_analyses(1, acquisition, db)
-        collection = acquisition.get_collection(
-            ArtifactType.ACQUISITION_DATA, Repository.ACQUISITION_STORE
-        )
-        mock.assert_called_once_with(
-            collection=collection, dest=Repository.ANALYSIS_STORE, session=db
-        )
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
+    handle_post_read_analyses(1, acquisition, db)
     db.refresh(analysis)
     assert analysis.status == SlurmJobStatus.SUBMITTED
 
@@ -136,6 +135,12 @@ def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
     resource_id = f"wellplate.{acquisition_plan.wellplate.name}"
     check_to_schedule_acquisition(resource_id=resource_id)
     complete_reads(acquisition_plan, db)
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
     handle_post_read_analyses(1, acquisition, db)
     db.refresh(analysis)
     assert analysis.status == SlurmJobStatus.UNSUBMITTED
@@ -159,6 +164,12 @@ def test_handle_end_of_run_analyses(db: Session):
     resource_id = f"wellplate.{acquisition_plan.wellplate.name}"
     check_to_schedule_acquisition(resource_id=resource_id)
     complete_reads(acquisition_plan, db)
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
     handle_end_of_run_analyses(acquisition, db)
     db.refresh(analysis)
     assert analysis.status == SlurmJobStatus.SUBMITTED
@@ -183,6 +194,12 @@ def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
     resource_id = f"wellplate.{acquisition_plan.wellplate.name}"
     check_to_schedule_acquisition(resource_id=resource_id)
     complete_reads(acquisition_plan, db)
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
     handle_end_of_run_analyses(acquisition, db)
     db.refresh(analysis)
     assert analysis.status == SlurmJobStatus.UNSUBMITTED
@@ -206,6 +223,12 @@ def test_immediate_analyses(db: Session):
     resource_id = f"wellplate.{acquisition_plan.wellplate.name}"
     check_to_schedule_acquisition(resource_id=resource_id)
     complete_reads(acquisition_plan, db)
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
     handle_immediate_analyses(acquisition, db)
     db.refresh(analysis)
     assert analysis.status == SlurmJobStatus.SUBMITTED
@@ -230,6 +253,12 @@ def test_handle_immediate_analyses_no_matching_trigger(db: Session):
     resource_id = f"wellplate.{acquisition_plan.wellplate.name}"
     check_to_schedule_acquisition(resource_id=resource_id)
     complete_reads(acquisition_plan, db)
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
     handle_immediate_analyses(acquisition, db)
     db.refresh(analysis)
     assert analysis.status == SlurmJobStatus.UNSUBMITTED

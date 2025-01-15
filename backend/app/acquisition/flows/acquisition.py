@@ -7,7 +7,6 @@ from app.acquisition.flows.analysis import handle_analyses
 from app.acquisition.flows.artifact_collections import (
     copy_collection,
     move_collection,
-    update_collection_artifacts,
 )
 from app.acquisition.models import (
     ArtifactCollectionCreate,
@@ -44,7 +43,6 @@ def on_plateread_completed(plateread_id: int):
                 ),
             )
 
-        update_collection_artifacts(collection=acquisition_collection, session=session)
         copy_collection(
             collection=acquisition_collection,
             dest=Repository.ANALYSIS_STORE,
