@@ -439,7 +439,7 @@ def test_update_plateread_emit_event(
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
-    with patch("app.acquisition.routes.dispatch") as mock:
+    with patch("app.acquisition.routes.handle_plateread_status_update") as mock:
         response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/platereads/{read.id}",
             json={"status": "RUNNING"},
@@ -464,7 +464,7 @@ def test_update_plateread_no_change(
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
     read = scheduled.schedule[0]
-    with patch("app.acquisition.routes.dispatch") as mock:
+    with patch("app.acquisition.routes.handle_plateread_status_update") as mock:
         response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/platereads/{read.id}",
             json={"status": read.status.value},
