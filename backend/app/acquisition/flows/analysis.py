@@ -18,7 +18,7 @@ from app.acquisition.models import (
 )
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def submit_analysis_request(analysis_spec: SBatchAnalysisSpec, session: Session):
     event = SynapseGreatlakesMessage(
         resource=f"sbatch_analysis.{analysis_spec.id}",
@@ -35,7 +35,7 @@ def submit_analysis_request(analysis_spec: SBatchAnalysisSpec, session: Session)
     )
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
     logger = get_run_logger()
     logger.info(f"Handling end-of-run analyses for acquisition {acquisition.name}")
@@ -75,7 +75,7 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
         submit_analysis_request(analysis, session)
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def handle_post_read_analyses(
     read_idx: int, acquisition: Acquisition, session: Session
 ):
@@ -120,7 +120,7 @@ def handle_post_read_analyses(
         submit_analysis_request(analysis, session)
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def handle_immediate_analyses(acquisition: Acquisition, session: Session):
     logger = get_run_logger()
     if not acquisition.analysis_plan:
@@ -157,7 +157,7 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
         submit_analysis_request(analysis, session)
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def handle_analyses(acquisition: Acquisition, session: Session):
     """
     Handles submitting analysis plans for an acquisition, depending on the

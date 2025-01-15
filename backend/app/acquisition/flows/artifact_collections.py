@@ -103,13 +103,13 @@ def _retrieve_cmd(origin: Path, dest_base: DirectoryPath) -> DirectoryPath:
     return dest
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def _get_dest_path(collection: ArtifactCollection, dest: Repository) -> DirectoryPath:
     relpath = collection.acquisition_dir.relative_to(collection.location.path)
     return dest.path / relpath
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def _retrieve(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Retrieving archived {collection} to {dest}")
@@ -118,7 +118,7 @@ def _retrieve(collection: ArtifactCollection, dest: Repository):
     _retrieve_cmd(collection.path, dest_path)
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def _archive(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Archiving {collection} to {dest}")
@@ -127,7 +127,7 @@ def _archive(collection: ArtifactCollection, dest: Repository):
     _archive_cmd(collection.path, dest_path)
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def _sync(collection: ArtifactCollection, dest: Repository):
     logger = get_run_logger()
     logger.info(f"Syncing {collection} to {dest}")
@@ -136,7 +136,7 @@ def _sync(collection: ArtifactCollection, dest: Repository):
     _sync_cmd(collection.path, dest_path)
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def copy_collection(
     *, collection: ArtifactCollection, dest: Repository, session: Session
 ) -> ArtifactCollection:
@@ -175,14 +175,14 @@ def _cleanup_cmd(path: Path):
         raise e
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def cleanup(collection: ArtifactCollection, session: Session):
     _cleanup_cmd(collection.path)
     session.delete(collection)
     session.commit()
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def move_collection(
     *, collection: ArtifactCollection, dest: Repository, session: Session
 ) -> ArtifactCollection:
@@ -191,7 +191,7 @@ def move_collection(
     return new_collection
 
 
-@task(cache_policy=NONE)
+@task(cache_policy=NONE)  # type: ignore[arg-type]
 def update_collection_artifacts(collection: ArtifactCollection, session: Session):
     if collection.location == Repository.ARCHIVE_STORE:
         raise ValueError("Cannot update artifacts in archive store")
