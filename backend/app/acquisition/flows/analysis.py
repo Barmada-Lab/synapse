@@ -49,7 +49,7 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
     )
     if not acquisition_data:
         raise ValueError(
-            f"Acquisition {acquisition.id} has no acquisition collection in {Repository.ANALYSIS_STORE}"
+            f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
         )
 
     analyses = [
@@ -85,7 +85,7 @@ def handle_post_read_analyses(
     )
     if not acquisition_data:
         raise ValueError(
-            f"Acquisition {acquisition.id} has no acquisition collection in {Repository.ANALYSIS_STORE}"
+            f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
         )
 
     analyses = [
@@ -115,7 +115,7 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
     )
     if not acquisition_data:
         raise ValueError(
-            f"Acquisition {acquisition.id} has no acquisition collection in {Repository.ANALYSIS_STORE}"
+            f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
         )
 
     analyses = [
