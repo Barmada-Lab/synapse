@@ -136,7 +136,7 @@ class AcquisitionPlanRecord(BaseModel):
                     status = ProcessStatus.SCHEDULED
 
         deadline_delta_mins = None
-        if plan.deadline_delta:
+        if plan.deadline_delta is not None:
             deadline_delta_mins = int(plan.deadline_delta.total_seconds() // 60)
 
         return AcquisitionPlanRecord(
@@ -155,6 +155,10 @@ class AcquisitionPlanRecord(BaseModel):
 class AcquisitionPlanSheet(RecordSheet[AcquisitionPlanRecord]):
     def parse_row(self, row: dict[str, Any]) -> Result[AcquisitionPlanRecord, RowError]:
         try:
+            if row["deadline_delta_mins"] == "":
+                row["deadline_delta_mins"] = None
+            else:
+                row["deadline_delta_mins"] = int(row["deadline_delta_mins"])
             record = AcquisitionPlanRecord.model_validate(row)
             return Success(record)
         except Exception as e:
