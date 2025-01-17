@@ -126,26 +126,19 @@ def test_update_wellplate_emit_event(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:
     wellplate_in = create_random_wellplate(session=db)
-    with patch("app.labware.events.emit_event") as mock_emit_event:
+    with patch("app.labware.events.check_to_schedule_acquisition") as mock_emit_event:
         pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
-            json={"location": Location.CQ1.value},
+            json={"location": Location.CYTOMAT2.value},
         )
-        mock_emit_event.assert_called_once_with(
-            "wellplate.location_update",
-            resource={
-                "prefect.resource.id": f"wellplate.{wellplate_in.name}",
-                "location.before": Location.EXTERNAL.value,
-                "location.after": Location.CQ1.value,
-            },
-        )
+        mock_emit_event.assert_called_once_with(wellplate_id=wellplate_in.id)
 
 
 def test_update_wellplate_no_change_doesnt_emit_event(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:
     wellplate_in = create_random_wellplate(session=db)
-    with patch("app.labware.events.emit_event") as mock_emit_event:
+    with patch("app.labware.events.check_to_schedule_acquisition") as mock_emit_event:
         pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/labware/{wellplate_in.id}",
             json={"location": Location.EXTERNAL.value},

@@ -22,8 +22,7 @@ def test_check_to_schedule_acquisition(db: Session) -> None:
         session=db, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
 
-    resource_id = f"wellplate.{wellplate.name}"
-    check_to_schedule_acquisition(resource_id=resource_id)
+    check_to_schedule_acquisition(wellplate_id=wellplate.id)  # type: ignore[arg-type]
 
     db.refresh(acquisition_plan)
     assert acquisition_plan.schedule != []
@@ -42,8 +41,7 @@ def test_check_to_schedule_acquisition_different_storage_location(db: Session) -
         session=db, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
 
-    resource_id = f"wellplate.{wellplate.name}"
-    check_to_schedule_acquisition(resource_id=resource_id)
+    check_to_schedule_acquisition(wellplate_id=wellplate.id)  # type: ignore[arg-type]
 
     db.refresh(acquisition_plan)
     # plate is not present in acquisition plan's storage_location, so scheduling
@@ -52,32 +50,5 @@ def test_check_to_schedule_acquisition_different_storage_location(db: Session) -
 
 
 def test_check_to_schedule_acquisition_no_wellplate() -> None:
-    resource_id = "wellplate.nonexist"
     with pytest.raises(ValueError):
-        check_to_schedule_acquisition(resource_id=resource_id)
-
-
-def test_check_to_schedule_acquisition_invalid_resource_id() -> None:
-    resource_id = "welplate.badprefix"
-    with pytest.raises(
-        ValueError, match=f"Invalid wellplate resource id: {resource_id}"
-    ):
-        check_to_schedule_acquisition(resource_id=resource_id)
-
-    resource_id = "wellplate.contains.dots"
-    with pytest.raises(
-        ValueError, match=f"Invalid wellplate resource id: {resource_id}"
-    ):
-        check_to_schedule_acquisition(resource_id=resource_id)
-
-    resource_id = "wellplate.contains spaces"
-    with pytest.raises(
-        ValueError, match=f"Invalid wellplate resource id: {resource_id}"
-    ):
-        check_to_schedule_acquisition(resource_id=resource_id)
-
-    resource_id = "wellplate.contains-non_word-chars"
-    with pytest.raises(
-        ValueError, match=f"Invalid wellplate resource id: {resource_id}"
-    ):
-        check_to_schedule_acquisition(resource_id=resource_id)
+        check_to_schedule_acquisition(wellplate_id=2**16)

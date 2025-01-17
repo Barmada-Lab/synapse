@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from sqlalchemy import func
 from sqlmodel import select
 
@@ -7,7 +7,7 @@ from app.core.deps import SessionDep
 from app.users.deps import CurrentActiveUserDep
 
 from . import crud, flows
-from .events import emit_wellplate_location_update
+from .events import handle_wellplate_location_update
 from .models import (
     Wellplate,
     WellplateCreate,
@@ -61,18 +61,24 @@ def update_wellplate_location(
     session: SessionDep,
     wellplate_id: int,
     wellplate_in: WellplateUpdate,
+    background_tasks: BackgroundTasks,
 ) -> WellplateRecord:
     if (wellplate := session.get(Wellplate, wellplate_id)) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Wellplate not found."
         )
-    before_location = wellplate.location
+    origin = wellplate.location
     wellplate = crud.update_wellplate(
         session=session, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
 
-    if before_location != wellplate.location:
-        emit_wellplate_location_update(wellplate=wellplate, before=before_location)
+    if origin != wellplate.location:
+        background_tasks.add_task(
+            handle_wellplate_location_update,
+            wellplate_id=wellplate_id,
+            origin=origin,
+            dest=wellplate.location,
+        )
 
     return WellplateRecord.model_validate(wellplate)
 

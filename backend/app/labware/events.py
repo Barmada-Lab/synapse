@@ -1,25 +1,21 @@
-import re
+from app.acquisition.flows.acquisition_scheduling import check_to_schedule_acquisition
 
-from prefect.events import emit_event
-
-from .models import Location, Wellplate
-
-WELLPLATE_RESOURCE_REGEX = r"^wellplate\.(?P<wellplate_name>\w+)$"
+from .models import Location
 
 
-def emit_wellplate_location_update(*, wellplate: Wellplate, before: Location) -> None:
-    if wellplate.location == before:
+def handle_wellplate_location_update(
+    *, wellplate_id: int, origin: Location, dest: Location
+) -> None:
+    if origin == dest:
         return
 
-    wellplate_name = wellplate.name
-    resource_id = f"wellplate.{wellplate_name}"
-    if not re.match(WELLPLATE_RESOURCE_REGEX, resource_id):
-        raise ValueError(f"Invalid wellplate name: {wellplate_name}")
+    match (origin, dest):
+        case (Location.EXTERNAL, Location.CYTOMAT2):
+            # check to schedule
+            check_to_schedule_acquisition(wellplate_id=wellplate_id)
 
-    wellplate_resource = {
-        "prefect.resource.id": resource_id,
-        "location.before": before.value,
-        "location.after": wellplate.location.value,
-    }
+        case (Location.EXTERNAL, Location.HOTEL):
+            # check to schedule
+            check_to_schedule_acquisition(wellplate_id=wellplate_id)
 
-    emit_event("wellplate.location_update", resource=wellplate_resource)
+    return

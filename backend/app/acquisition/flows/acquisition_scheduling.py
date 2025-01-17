@@ -1,5 +1,4 @@
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
 from xml.etree.ElementTree import canonicalize
@@ -20,8 +19,7 @@ from app.acquisition.models import AcquisitionPlan, Location
 from app.common.dt import local_now
 from app.core.config import settings
 from app.core.deps import get_db
-from app.labware import crud as labware_crud
-from app.labware.events import WELLPLATE_RESOURCE_REGEX
+from app.labware.models import Wellplate
 
 logger = logging.getLogger(__name__)
 
@@ -108,18 +106,11 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
 
 
 @flow
-def check_to_schedule_acquisition(resource_id: str):
-    if (match := re.match(WELLPLATE_RESOURCE_REGEX, resource_id)) is None:
-        raise ValueError(f"Invalid wellplate resource id: {resource_id}")
-
-    wellplate_name = match.group("wellplate_name")
+def check_to_schedule_acquisition(wellplate_id: int):
     with get_db() as session:
-        wellplate = labware_crud.get_wellplate_by_name(
-            session=session, name=wellplate_name
-        )
-
+        wellplate = session.get(Wellplate, wellplate_id)
         if wellplate is None:
-            raise ValueError(f"Wellplate {wellplate_name} not found")
+            raise ValueError(f"Wellplate {wellplate_id} not found")
 
         kiosk_path = settings.OVERLORD_DIR / "Batches" / "Kiosk"
         for plan in wellplate.acquisition_plans:
