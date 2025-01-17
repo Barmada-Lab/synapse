@@ -66,7 +66,6 @@ class LifoStackCollection(BaseXmlModel, tag="LifoStackCollection", skip_empty=Tr
 class Batch(BaseXmlModel):
     created: "OverlordDatetime" = element(tag="Created", default_factory=datetime.now)
     start_after: "OverlordDatetime" = element(tag="StartAfter")
-    deadline: "OverlordDatetime" = element(tag="Deadline")
     added: str = element(tag="Added", default="0001-01-01_00-00-00")
     started: str = element(tag="Started", default="0001-01-01_00-00-00")
     completed: str = element(tag="Completed", default="0001-01-01_00-00-00")
@@ -106,6 +105,7 @@ class OverlordBatchParams:
     cq1_protocol_name: str
     read_barcodes: bool
     plate_estimated_time: int
+    deadline: datetime
 
     def to_parameter_collection(self) -> ParameterCollection:
         return ParameterCollection(
@@ -149,6 +149,11 @@ class OverlordBatchParams:
                     name="PLATE_ESTIMATED_TIME",
                     type="Numeric",
                     value=str(self.plate_estimated_time),
+                ),
+                OverlordParameter(
+                    name="DEADLINE",
+                    type="Text",
+                    value=self.deadline.isoformat(),
                 ),
             ]
         )

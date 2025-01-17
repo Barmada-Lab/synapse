@@ -62,7 +62,6 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
 
         batch = Batch(
             start_after=spec.start_after,
-            deadline=deadline,
             batch_name=batch_name,
             user=user_name,
             parent_batch_name=parent_name,
@@ -98,6 +97,7 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
                 cq1_protocol_name=plan.protocol_name,
                 read_barcodes=True,
                 plate_estimated_time=1337,
+                deadline=deadline,
             ).to_parameter_collection(),
         )
 
