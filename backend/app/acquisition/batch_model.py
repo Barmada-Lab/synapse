@@ -66,6 +66,7 @@ class LifoStackCollection(BaseXmlModel, tag="LifoStackCollection", skip_empty=Tr
 class Batch(BaseXmlModel):
     created: "OverlordDatetime" = element(tag="Created", default_factory=datetime.now)
     start_after: "OverlordDatetime" = element(tag="StartAfter")
+    deadline: "OverlordDatetime" = element(tag="Deadline")
     added: str = element(tag="Added", default="0001-01-01_00-00-00")
     started: str = element(tag="Started", default="0001-01-01_00-00-00")
     completed: str = element(tag="Completed", default="0001-01-01_00-00-00")

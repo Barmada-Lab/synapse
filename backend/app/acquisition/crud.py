@@ -97,7 +97,9 @@ def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan
     start_time = datetime.now()
     for i in range(plan.n_reads):
         start_after = start_time + (i * plan.interval)
-        deadline = start_time + i * plan.interval + plan.deadline_delta
+        deadline = None
+        if plan.deadline_delta:
+            deadline = start_after + plan.deadline_delta
         session.add(
             PlatereadSpec(
                 start_after=start_after,

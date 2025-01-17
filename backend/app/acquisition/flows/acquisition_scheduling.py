@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import datetime
 from pathlib import Path
 from xml.etree.ElementTree import canonicalize
 
@@ -57,8 +58,13 @@ def write_batches(plan: AcquisitionPlan, kiosk_path: Path):
         batch_name = f"{parent_name}_READ{i:03d}"
         batch_path = kiosk_path / f"{batch_name}.xml"
 
+        deadline = (
+            spec.deadline if spec.deadline else datetime(9999, 12, 31, 23, 59, 59)
+        )
+
         batch = Batch(
             start_after=spec.start_after,
+            deadline=deadline,
             batch_name=batch_name,
             user=user_name,
             parent_batch_name=parent_name,

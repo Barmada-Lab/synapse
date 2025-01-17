@@ -238,7 +238,7 @@ def test_create_acquisition_plan_default_interval_is_zero(db: Session) -> None:
     assert plan_create.interval == timedelta(days=0)
 
 
-def test_create_acquisition_plan_default_deadline_delta_is_zero(db: Session) -> None:
+def test_create_acquisition_plan_default_deadline_delta_is_none(db: Session) -> None:
     acquisition = create_random_acquisition(session=db)
     wellplate = create_random_wellplate(session=db)
 
@@ -260,7 +260,7 @@ def test_create_acquisition_plan_default_deadline_delta_is_zero(db: Session) -> 
         priority=priority,
     )
 
-    assert plan_create.deadline_delta == timedelta(days=0)
+    assert plan_create.deadline_delta is None
 
 
 def test_create_acquisition_plan_default_priority_is_normal(db: Session) -> None:

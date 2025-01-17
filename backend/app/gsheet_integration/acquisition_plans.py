@@ -24,6 +24,7 @@ class CreateAcquisitionPlanRecord(BaseModel):
     storage_location: Location
     n_reads: int
     interval_mins: int
+    deadline_delta_mins: int | None
     protocol_name: str
 
 
@@ -32,6 +33,9 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
         self, row: dict[str, Any]
     ) -> Result[CreateAcquisitionPlanRecord, RowError]:
         try:
+            row["deadline_delta_mins"] = (
+                int(row["deadline_delta_mins"]) if row["deadline_delta_mins"] else None
+            )
             record = CreateAcquisitionPlanRecord.model_validate(row)
             return Success(record)
         except Exception as e:
@@ -69,6 +73,9 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
             except Exception as e:
                 return Failure(RowError(row=record.model_dump(), message=str(e)))
         try:
+            deadline_delta = None
+            if record.deadline_delta_mins:
+                deadline_delta = timedelta(minutes=record.deadline_delta_mins)
             acq_crud.create_acquisition_plan(
                 session=self.session,
                 plan_create=AcquisitionPlanCreate(
@@ -77,6 +84,7 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
                     storage_location=record.storage_location,
                     n_reads=record.n_reads,
                     interval=timedelta(minutes=record.interval_mins),
+                    deadline_delta=deadline_delta,
                     protocol_name=record.protocol_name,
                 ),
             )
@@ -100,6 +108,7 @@ class AcquisitionPlanRecord(BaseModel):
     storage_location: Location
     n_reads: int
     interval_mins: int
+    deadline_delta_mins: int | None
     protocol_name: str
     acquisition_status: ProcessStatus
     action: AcquisitionPlanRecordAction
@@ -126,12 +135,17 @@ class AcquisitionPlanRecord(BaseModel):
                 else:
                     status = ProcessStatus.SCHEDULED
 
+        deadline_delta_mins = None
+        if plan.deadline_delta:
+            deadline_delta_mins = int(plan.deadline_delta.total_seconds() // 60)
+
         return AcquisitionPlanRecord(
             acquisition_name=plan.acquisition.name,
             wellplate_name=plan.wellplate.name,
             storage_location=plan.storage_location,
             n_reads=plan.n_reads,
             interval_mins=int(plan.interval.total_seconds() / 60),
+            deadline_delta_mins=deadline_delta_mins,
             protocol_name=plan.protocol_name,
             acquisition_status=status,
             action=AcquisitionPlanRecord.AcquisitionPlanRecordAction.none,

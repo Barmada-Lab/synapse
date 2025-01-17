@@ -7,6 +7,11 @@ example_batch = Path(__file__).parent / "example_overlord_batch.xml"
 
 
 def test_overlord_batch_from_python():
+    now = datetime.datetime.now()
+    deadline = now + datetime.timedelta(days=1)
     Batch(
-        start_after=datetime.datetime.now(), batch_name="foo", parent_batch_name="foo"
+        start_after=deadline,
+        deadline=deadline,
+        batch_name="foo",
+        parent_batch_name="foo",
     )

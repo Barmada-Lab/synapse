@@ -230,7 +230,7 @@ class AcquisitionPlanBase(SQLModel):
     protocol_name: str = Field(max_length=255)
     n_reads: int = Field(ge=1)
     interval: timedelta = Field(default=timedelta(days=0))
-    deadline_delta: timedelta = Field(default=timedelta(days=0))
+    deadline_delta: timedelta | None = None
     priority: ImagingPriority = ImagingPriority.NORMAL
 
 
