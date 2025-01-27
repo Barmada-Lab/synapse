@@ -12,6 +12,7 @@ from app.gsheet_integration.gsheet import RecordSheet, RowError
 
 class CreateAcquisitionRecord(BaseModel):
     acquisition_name: str
+    instrument_name: str
 
 
 class CreateAcquisitionSheet(RecordSheet[CreateAcquisitionRecord]):
@@ -32,8 +33,19 @@ class CreateAcquisitionSheet(RecordSheet[CreateAcquisitionRecord]):
             return Failure(
                 RowError(row=record.model_dump(), message="Acquisition already exists")
             )
+
+        instrument = crud.get_instrument_by_name(
+            session=self.session, name=record.instrument_name
+        )
+        if not instrument:
+            return Failure(
+                RowError(row=record.model_dump(), message="Instrument not found")
+            )
+
         try:
-            create = AcquisitionCreate(name=record.acquisition_name)
+            create = AcquisitionCreate(
+                name=record.acquisition_name, instrument_id=instrument.id
+            )
             crud.create_acquisition(session=self.session, acquisition_create=create)
             return Success(None)
         except Exception as e:
@@ -51,12 +63,14 @@ class AcquisitionRecord(BaseModel):
         archive = "archive"
 
     acquisition_name: str
+    instrument_name: str
     action: AcquisitionRecordAction
 
     @staticmethod
     def from_db(acquisition: Acquisition) -> "AcquisitionRecord":
         return AcquisitionRecord(
             acquisition_name=acquisition.name,
+            instrument_name=acquisition.instrument.name,
             action=AcquisitionRecord.AcquisitionRecordAction.none,
         )
 
@@ -108,12 +122,14 @@ class ArchiveRecord(BaseModel):
         retrieve = "retrieve"
 
     acquisition_name: str
+    instrument_name: str
     action: ArchiveRecordAction
 
     @staticmethod
     def from_db(acquisition: Acquisition) -> "ArchiveRecord":
         return ArchiveRecord(
             acquisition_name=acquisition.name,
+            instrument_name=acquisition.instrument.name,
             action=ArchiveRecord.ArchiveRecordAction.none,
         )
 

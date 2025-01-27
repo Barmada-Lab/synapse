@@ -106,17 +106,22 @@ def handle_post_read_analyses(
 @task(cache_policy=NONE)  # type: ignore[arg-type]
 def handle_immediate_analyses(acquisition: Acquisition, session: Session):
     logger = get_run_logger()
-    if not acquisition.analysis_plan:
+    if acquisition.analysis_plan is None:
         logger.info(f"No analysis plan found for acquisition {acquisition.name}")
         return
 
-    acquisition_data = acquisition.get_collection(
-        ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
-    )
-    if not acquisition_data:
-        raise ValueError(
-            f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
-        )
+    match acquisition.instrument.instrument_type.name:
+        case "PCR":
+            # HACK: just ignore acquistion data check for pcr; we pull from google drive in the analysis stage
+            pass
+        case _:
+            acquisition_data = acquisition.get_collection(
+                ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
+            )
+            if acquisition_data is None:
+                raise ValueError(
+                    f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
+                )
 
     analyses = [
         analysis

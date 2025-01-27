@@ -28,7 +28,7 @@ class CreateAnalysisPlanRecord(BaseModel):
 class CreateAnalysisPlanSheet(RecordSheet[CreateAnalysisPlanRecord]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.acquisitions_created = set()
+        self.acquisition_analyses_created = set()
 
     def parse_row(
         self, row: dict[str, Any]
@@ -51,7 +51,7 @@ class CreateAnalysisPlanSheet(RecordSheet[CreateAnalysisPlanRecord]):
             return Failure(
                 RowError(row=record.model_dump(), message="Acquisition not found")
             )
-        self.acquisitions_created.add(acquisition.name)
+        self.acquisition_analyses_created.add(acquisition.name)
         analysis_plan = acquisition.analysis_plan
         if not analysis_plan:
             analysis_plan = crud.create_analysis_plan(

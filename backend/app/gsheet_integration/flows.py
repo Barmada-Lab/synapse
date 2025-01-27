@@ -1,5 +1,5 @@
 import gspread
-from prefect import flow
+from prefect import flow, get_logger
 from prefect.blocks.system import Secret
 from prefect.events import DeploymentEventTrigger
 
@@ -77,10 +77,16 @@ def sync_google_sheets():
         print_barcodes_sheet.render(print_barcodes_ws)
 
         # ... lastly,
-        for acquisition_name in create_analysis_sheet.acquisitions_created:
+        for acquisition_name in create_analysis_sheet.analyses_created:
             acquisition = get_acquisition_by_name(
                 session=session, name=acquisition_name
             )
+            if not acquisition:
+                get_logger().warning(
+                    f"Acquisition {acquisition_name} not found when running analyses"
+                )
+                continue
+
             handle_analyses(acquisition, session)
 
 
