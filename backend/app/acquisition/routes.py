@@ -18,6 +18,14 @@ from .models import (
     AnalysisPlan,
     AnalysisPlanCreate,
     AnalysisPlanRecord,
+    Instrument,
+    InstrumentCreate,
+    InstrumentList,
+    InstrumentRecord,
+    InstrumentType,
+    InstrumentTypeCreate,
+    InstrumentTypeList,
+    InstrumentTypeRecord,
     PlatereadSpec,
     PlatereadSpecRecord,
     PlatereadSpecUpdate,
@@ -241,3 +249,75 @@ def update_plateread(
         )
 
     return PlatereadSpecRecord.model_validate(plateread_db)
+
+
+@api_router.post(
+    "/instrument_types",
+    response_model=InstrumentTypeRecord,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_instrument_type(
+    session: SessionDep, instrument_type_create: InstrumentTypeCreate
+) -> InstrumentTypeRecord:
+    instrument_type = crud.create_instrument_type(
+        session=session, instrument_type_create=instrument_type_create
+    )
+    return InstrumentTypeRecord.model_validate(instrument_type)
+
+
+@api_router.get("/instrument_types", response_model=InstrumentTypeList)
+def get_instrument_types(
+    session: SessionDep, skip: int = 0, limit: int = 100
+) -> InstrumentTypeList:
+    count_statement = select(func.count()).select_from(InstrumentType)
+    count = session.exec(count_statement).one()
+    statement = select(InstrumentType).offset(skip).limit(limit)
+    instrument_types = session.exec(statement).all()
+    return InstrumentTypeList(data=instrument_types, count=count)
+
+
+@api_router.delete("/instrument_types/{id}")
+def delete_instrument_type(session: SessionDep, id: int) -> Response:
+    instrument_type = session.get(InstrumentType, id)
+    if not instrument_type:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Instrument type not found"
+        )
+    session.delete(instrument_type)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@api_router.post(
+    "/instruments", response_model=InstrumentRecord, status_code=status.HTTP_201_CREATED
+)
+def create_instrument(
+    session: SessionDep, instrument_create: InstrumentCreate
+) -> InstrumentRecord:
+    instrument = crud.create_instrument(
+        session=session, instrument_create=instrument_create
+    )
+    return InstrumentRecord.model_validate(instrument)
+
+
+@api_router.get("/instruments", response_model=InstrumentList)
+def get_instruments(
+    session: SessionDep, skip: int = 0, limit: int = 100
+) -> InstrumentList:
+    count_statement = select(func.count()).select_from(Instrument)
+    count = session.exec(count_statement).one()
+    statement = select(Instrument).offset(skip).limit(limit)
+    instruments = session.exec(statement).all()
+    return InstrumentList(data=instruments, count=count)
+
+
+@api_router.delete("/instruments/{id}")
+def delete_instrument(session: SessionDep, id: int) -> Response:
+    instrument = session.get(Instrument, id)
+    if not instrument:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Instrument not found"
+        )
+    session.delete(instrument)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

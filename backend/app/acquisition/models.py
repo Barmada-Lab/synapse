@@ -74,6 +74,60 @@ class AnalysisTrigger(str, enum.Enum):
 
 
 #################################################################################
+# Instruments
+#################################################################################
+
+
+class InstrumentTypeBase(SQLModel):
+    name: str = Field(unique=True, index=True, min_length=1, max_length=255)
+
+
+class InstrumentType(InstrumentTypeBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+    instruments: list["Instrument"] = Relationship(back_populates="instrument_type")
+
+
+class InstrumentTypeCreate(InstrumentTypeBase):
+    pass
+
+
+class InstrumentTypeRecord(InstrumentTypeBase):
+    id: int
+
+
+class InstrumentTypeList(SQLModel):
+    data: list[InstrumentTypeRecord]
+    count: int
+
+
+class InstrumentBase(SQLModel):
+    name: str = Field(unique=True, index=True, min_length=1, max_length=255)
+
+
+class Instrument(InstrumentBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+    instrument_type_id: int = Field(foreign_key="instrumenttype.id", ondelete="CASCADE")
+    instrument_type: InstrumentType = Relationship(back_populates="instruments")
+
+    acquisitions: list["Acquisition"] = Relationship(back_populates="instrument")
+
+
+class InstrumentCreate(InstrumentBase):
+    instrument_type_id: int
+
+
+class InstrumentRecord(InstrumentBase):
+    id: int
+
+
+class InstrumentList(SQLModel):
+    data: list[InstrumentRecord]
+    count: int
+
+
+#################################################################################
 # Acquisition model
 # ---
 # An Acquisition represents the result of a particular AcquisitionPlan. It may
@@ -95,6 +149,9 @@ class Acquisition(AcquisitionBase, table=True):
     collections_list: list["ArtifactCollection"] = Relationship(
         back_populates="acquisition", cascade_delete=True
     )
+
+    instrument_id: int = Field(foreign_key="instrument.id", ondelete="CASCADE")
+    instrument: Instrument = Relationship(back_populates="acquisitions")
 
     acquisition_plan: Optional["AcquisitionPlan"] = Relationship(
         back_populates="acquisition", cascade_delete=True
@@ -118,7 +175,7 @@ class Acquisition(AcquisitionBase, table=True):
 
 
 class AcquisitionCreate(AcquisitionBase):
-    pass
+    instrument_id: int
 
 
 class AcquisitionRecord(AcquisitionBase):

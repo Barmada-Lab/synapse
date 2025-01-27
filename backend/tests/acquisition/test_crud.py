@@ -18,6 +18,8 @@ from app.acquisition.models import (
     ArtifactCollectionCreate,
     ArtifactType,
     ImagingPriority,
+    InstrumentCreate,
+    InstrumentTypeCreate,
     PlatereadSpecUpdate,
     ProcessStatus,
     Repository,
@@ -32,6 +34,8 @@ from tests.acquisition.utils import (
     create_random_acquisition_plan,
     create_random_analysis_spec,
     create_random_artifact_collection,
+    create_random_instrument,
+    create_random_instrument_type,
 )
 from tests.labware.events import create_random_wellplate
 from tests.utils import random_lower_string
@@ -39,7 +43,8 @@ from tests.utils import random_lower_string
 
 def test_create_acquisition(db: Session) -> None:
     name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
+    instrument = create_random_instrument(session=db)
+    acquisition_create = AcquisitionCreate(name=name, instrument_id=instrument.id)
 
     acquisition = crud.create_acquisition(
         session=db, acquisition_create=acquisition_create
@@ -49,7 +54,8 @@ def test_create_acquisition(db: Session) -> None:
 
 def test_create_acquisition_already_exists(db: Session) -> None:
     name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
+    instrument = create_random_instrument(session=db)
+    acquisition_create = AcquisitionCreate(name=name, instrument_id=instrument.id)
 
     _ = crud.create_acquisition(session=db, acquisition_create=acquisition_create)
     with pytest.raises(IntegrityError):
@@ -58,13 +64,8 @@ def test_create_acquisition_already_exists(db: Session) -> None:
 
 
 def test_get_acquisition_by_name(db: Session) -> None:
-    name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
-
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
-    )
-    stored_acquisition = crud.get_acquisition_by_name(session=db, name=name)
+    acquisition = create_random_acquisition(session=db)
+    stored_acquisition = crud.get_acquisition_by_name(session=db, name=acquisition.name)
     assert stored_acquisition is not None
     assert acquisition.name == stored_acquisition.name
 
@@ -76,7 +77,10 @@ def test_get_acquisition_by_name_not_found(db: Session) -> None:
 
 
 def test_create_artifact_collection(db: Session) -> None:
-    acquisition_create = AcquisitionCreate(name=random_lower_string())
+    instrument = create_random_instrument(session=db)
+    acquisition_create = AcquisitionCreate(
+        name=random_lower_string(), instrument_id=instrument.id
+    )
     acquisition = crud.create_acquisition(
         session=db, acquisition_create=acquisition_create
     )
@@ -121,10 +125,7 @@ def test_create_artifact_collection_invalid_acquisition_id(db: Session) -> None:
 
 def test_create_artifact_duplicate_type_and_location(db: Session) -> None:
     """Each combination of ArtifactType and Repository should be unique"""
-    acquisition_create = AcquisitionCreate(name=random_lower_string())
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
-    )
+    acquisition = create_random_acquisition(session=db)
 
     acquisition_id = acquisition.id
     location = Repository.ACQUISITION_STORE
@@ -168,10 +169,7 @@ def test_create_acquisition_plan(db: Session) -> None:
     priority = ImagingPriority.NORMAL
 
     name = random_lower_string()
-    acquisition_create = AcquisitionCreate(name=name)
-    acquisition = crud.create_acquisition(
-        session=db, acquisition_create=acquisition_create
-    )
+    acquisition = create_random_acquisition(session=db, name=name)
 
     plan_create = AcquisitionPlanCreate(
         acquisition_id=acquisition.id,
@@ -408,3 +406,48 @@ def test_update_analysis_spec(db: Session) -> None:
     update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
     updated = crud.update_analysis_spec(session=db, db_analysis=spec, update=update)
     assert updated.status == SlurmJobStatus.COMPLETED
+
+
+def test_create_instrument_type(db: Session) -> None:
+    name = random_lower_string()
+    instrument_type_create = InstrumentTypeCreate(name=name)
+    instrument_type = crud.create_instrument_type(
+        session=db, instrument_type_create=instrument_type_create
+    )
+    assert instrument_type.name == name
+
+
+def test_create_instrument_type_already_exists(db: Session) -> None:
+    name = random_lower_string()
+    instrument_type_create = InstrumentTypeCreate(name=name)
+    _ = crud.create_instrument_type(
+        session=db, instrument_type_create=instrument_type_create
+    )
+    with pytest.raises(IntegrityError):
+        crud.create_instrument_type(
+            session=db, instrument_type_create=instrument_type_create
+        )
+    db.rollback()
+
+
+def test_create_instrument(db: Session) -> None:
+    instrument_type = create_random_instrument_type(session=db)
+    name = random_lower_string()
+    instrument_create = InstrumentCreate(
+        name=name, instrument_type_id=instrument_type.id
+    )
+    instrument = crud.create_instrument(session=db, instrument_create=instrument_create)
+    assert instrument.name == name
+    assert instrument.instrument_type_id == instrument_type.id
+
+
+def test_create_duplicate_instrument_raises_integrityerror(db: Session) -> None:
+    instrument_type = create_random_instrument_type(session=db)
+    name = random_lower_string()
+    instrument_create = InstrumentCreate(
+        name=name, instrument_type_id=instrument_type.id
+    )
+    _ = crud.create_instrument(session=db, instrument_create=instrument_create)
+    with pytest.raises(IntegrityError):
+        crud.create_instrument(session=db, instrument_create=instrument_create)
+    db.rollback()

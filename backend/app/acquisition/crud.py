@@ -11,6 +11,10 @@ from .models import (
     ArtifactCollection,
     ArtifactCollectionCreate,
     ArtifactType,
+    Instrument,
+    InstrumentCreate,
+    InstrumentType,
+    InstrumentTypeCreate,
     PlatereadSpec,
     PlatereadSpecUpdate,
     Repository,
@@ -172,3 +176,23 @@ def get_analysis_spec(
         .where(SBatchAnalysisSpec.analysis_args == analysis_args)
     )
     return session.exec(statement).first()
+
+
+def create_instrument(
+    *, session: Session, instrument_create: InstrumentCreate
+) -> Instrument:
+    instrument = Instrument.model_validate(instrument_create)
+    session.add(instrument)
+    session.commit()
+    session.refresh(instrument)
+    return instrument
+
+
+def create_instrument_type(
+    *, session: Session, instrument_type_create: InstrumentTypeCreate
+) -> InstrumentType:
+    instrument_type = InstrumentType.model_validate(instrument_type_create)
+    session.add(instrument_type)
+    session.commit()
+    session.refresh(instrument_type)
+    return instrument_type

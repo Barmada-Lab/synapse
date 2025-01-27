@@ -11,6 +11,8 @@ from app.acquisition.crud import (
     create_analysis_plan,
     create_analysis_spec,
     create_artifact_collection,
+    create_instrument,
+    create_instrument_type,
 )
 from app.acquisition.models import (
     Acquisition,
@@ -23,6 +25,10 @@ from app.acquisition.models import (
     ArtifactCollectionCreate,
     ArtifactType,
     ImagingPriority,
+    Instrument,
+    InstrumentCreate,
+    InstrumentType,
+    InstrumentTypeCreate,
     ProcessStatus,
     Repository,
     SBatchAnalysisSpec,
@@ -36,7 +42,12 @@ from tests.utils import random_lower_string
 
 def create_random_acquisition(*, session: Session, **kwargs) -> Acquisition:
     kwargs.setdefault("name", random_lower_string())
-    acquisition_create = AcquisitionCreate(name=kwargs["name"])
+    if "instrument_id" not in kwargs:
+        instrument = create_random_instrument(session=session)
+        kwargs["instrument_id"] = instrument.id
+    acquisition_create = AcquisitionCreate(
+        name=kwargs["name"], instrument_id=kwargs["instrument_id"]
+    )
     return create_acquisition(session=session, acquisition_create=acquisition_create)
 
 
@@ -85,7 +96,10 @@ def create_random_acquisition_plan(
 ) -> AcquisitionPlan:
     kwargs.setdefault("name", random_lower_string())
     if acquisition is None:
-        acquisition_create = AcquisitionCreate(name=kwargs["name"])
+        instrument = create_random_instrument(session=session)
+        acquisition_create = AcquisitionCreate(
+            name=kwargs["name"], instrument_id=instrument.id
+        )
         acquisition = create_acquisition(
             session=session, acquisition_create=acquisition_create
         )
@@ -123,10 +137,7 @@ def create_random_artifact_collection(
     acquisition: Acquisition | None = None,
 ) -> ArtifactCollection:
     if acquisition is None:
-        acquisition_create = AcquisitionCreate(name=random_lower_string())
-        acquisition = create_acquisition(
-            session=session, acquisition_create=acquisition_create
-        )
+        acquisition = create_random_acquisition(session=session)
 
     artifact_collection_create = ArtifactCollectionCreate(
         acquisition_id=acquisition.id, artifact_type=artifact_type, location=location
@@ -163,3 +174,24 @@ def complete_reads(acquisition_plan: AcquisitionPlan, session: Session):
         location=Repository.ACQUISITION_STORE,
         acquisition=acquisition_plan.acquisition,
     )
+
+
+def create_random_instrument_type(
+    *, session: Session, name: str | None = None
+) -> InstrumentType:
+    name = name or random_lower_string()
+    instrument_type_create = InstrumentTypeCreate(name=name)
+    return create_instrument_type(
+        session=session, instrument_type_create=instrument_type_create
+    )
+
+
+def create_random_instrument(
+    *, session: Session, instrument_type_id: int | None = None
+) -> Instrument:
+    if instrument_type_id is None:
+        instrument_type_id = create_random_instrument_type(session=session).id
+    instrument_create = InstrumentCreate(
+        name=random_lower_string(), instrument_type_id=instrument_type_id
+    )
+    return create_instrument(session=session, instrument_create=instrument_create)
