@@ -417,6 +417,15 @@ def test_create_instrument_type(db: Session) -> None:
     assert instrument_type.name == name
 
 
+def test_get_instrument_type_by_name(db: Session) -> None:
+    name = random_lower_string()
+    instrument_type_create = InstrumentTypeCreate(name=name)
+    instrument_type = crud.create_instrument_type(
+        session=db, instrument_type_create=instrument_type_create
+    )
+    assert crud.get_instrument_type_by_name(session=db, name=name) == instrument_type
+
+
 def test_create_instrument_type_already_exists(db: Session) -> None:
     name = random_lower_string()
     instrument_type_create = InstrumentTypeCreate(name=name)
@@ -439,6 +448,16 @@ def test_create_instrument(db: Session) -> None:
     instrument = crud.create_instrument(session=db, instrument_create=instrument_create)
     assert instrument.name == name
     assert instrument.instrument_type_id == instrument_type.id
+
+
+def test_get_instrument_by_name(db: Session) -> None:
+    instrument_type = create_random_instrument_type(session=db)
+    name = random_lower_string()
+    instrument_create = InstrumentCreate(
+        name=name, instrument_type_id=instrument_type.id
+    )
+    instrument = crud.create_instrument(session=db, instrument_create=instrument_create)
+    assert crud.get_instrument_by_name(session=db, name=name) == instrument
 
 
 def test_create_duplicate_instrument_raises_integrityerror(db: Session) -> None:

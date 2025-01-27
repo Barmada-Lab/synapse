@@ -188,6 +188,11 @@ def create_instrument(
     return instrument
 
 
+def get_instrument_by_name(*, session: Session, name: str) -> Instrument | None:
+    statement = select(Instrument).where(Instrument.name == name)
+    return session.exec(statement).first()
+
+
 def create_instrument_type(
     *, session: Session, instrument_type_create: InstrumentTypeCreate
 ) -> InstrumentType:
@@ -196,3 +201,10 @@ def create_instrument_type(
     session.commit()
     session.refresh(instrument_type)
     return instrument_type
+
+
+def get_instrument_type_by_name(
+    *, session: Session, name: str
+) -> InstrumentType | None:
+    statement = select(InstrumentType).where(InstrumentType.name == name)
+    return session.exec(statement).first()
