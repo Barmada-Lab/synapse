@@ -339,7 +339,7 @@ class AcquisitionPlanList(SQLModel):
 
 class PlatereadSpecBase(SQLModel):
     start_after: datetime
-    deadline: datetime | None
+    deadline: datetime
     status: ProcessStatus = Field(
         sa_column=Column(Enum(ProcessStatus), nullable=False),
         default=ProcessStatus.PENDING,
