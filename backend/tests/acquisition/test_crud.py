@@ -189,7 +189,7 @@ def test_create_acquisition_plan(db: Session) -> None:
     assert record.n_reads == n_reads
     assert record.interval == interval
     assert record.priority == priority
-    assert record.schedule == []
+    assert record.reads == []
 
 
 def test_create_acquisition_plan_with_long_name_fails(db: Session) -> None:
@@ -326,11 +326,11 @@ def test_materialize_schedule(db: Session) -> None:
         deadline_delta=timedelta(minutes=1),
     )
     plan = schedule_plan(session=db, plan=plan)
-    assert len(plan.schedule) == 2
-    assert all(r.status == ProcessStatus.PENDING for r in plan.schedule)
+    assert len(plan.reads) == 2
+    assert all(r.status == ProcessStatus.PENDING for r in plan.reads)
 
-    t0 = plan.schedule[0]
-    t1 = plan.schedule[1]
+    t0 = plan.reads[0]
+    t1 = plan.reads[1]
     assert t0.start_after + timedelta(minutes=2) == t1.start_after
     assert t0.start_after + timedelta(minutes=1) == t0.deadline
 
@@ -339,7 +339,7 @@ def test_update_plateread(db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
     plan = schedule_plan(session=db, plan=plan)
 
-    plateread = plan.schedule[0]
+    plateread = plan.reads[0]
     plateread_in = PlatereadSpecUpdate(status=ProcessStatus.COMPLETED)
     updated = crud.update_plateread(
         session=db, db_plateread=plateread, plateread_in=plateread_in

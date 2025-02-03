@@ -161,10 +161,10 @@ def handle_analyses(acquisition: Acquisition, session: Session):
     if acquisition.acquisition_plan:
         n_complete = sum(
             read.status == ProcessStatus.COMPLETED
-            for read in acquisition.acquisition_plan.schedule
+            for read in acquisition.acquisition_plan.reads
         )
         n_end_states = sum(
-            read.status.is_endstate for read in acquisition.acquisition_plan.schedule
+            read.status.is_endstate for read in acquisition.acquisition_plan.reads
         )
         total_reads = acquisition.acquisition_plan.n_reads
         handle_post_read_analyses(n_complete, acquisition, session)

@@ -163,7 +163,7 @@ def move_plate_to_acquisition_plan_location(
 
 
 def complete_reads(acquisition_plan: AcquisitionPlan, session: Session):
-    for read in acquisition_plan.schedule:
+    for read in acquisition_plan.reads:
         read.status = ProcessStatus.COMPLETED
         session.add(read)
     session.commit()

@@ -554,7 +554,7 @@ def test_update_plateread_emit_event(
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
-    read = scheduled.schedule[0]
+    read = scheduled.reads[0]
     with patch("app.acquisition.routes.handle_plateread_status_update") as mock:
         response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/platereads/{read.id}",
@@ -579,7 +579,7 @@ def test_update_plateread_no_change(
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
-    read = scheduled.schedule[0]
+    read = scheduled.reads[0]
     with patch("app.acquisition.routes.handle_plateread_status_update") as mock:
         response = pw_authenticated_client.patch(
             f"{settings.API_V1_STR}/platereads/{read.id}",
@@ -595,7 +595,7 @@ def test_update_plateread_requires_authentication(
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
     scheduled = schedule_plan(session=db, plan=plan)
-    read = scheduled.schedule[0]
+    read = scheduled.reads[0]
     response = unauthenticated_client.patch(
         f"{settings.API_V1_STR}/platereads/{read.id}",
         json={"status": "RUNNING"},

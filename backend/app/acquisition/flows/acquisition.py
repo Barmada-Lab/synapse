@@ -52,7 +52,7 @@ def on_plateread_completed(plateread_id: int):
         handle_analyses(acquisition, session)
 
         n_endstates = sum(
-            read.status.is_endstate for read in plateread.acquisition_plan.schedule
+            read.status.is_endstate for read in plateread.acquisition_plan.reads
         )
         total_reads = plateread.acquisition_plan.n_reads
         if n_endstates == total_reads:

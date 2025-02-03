@@ -115,7 +115,7 @@ class AcquisitionPlanRecord(BaseModel):
 
     @staticmethod
     def from_db(plan: AcquisitionPlan) -> "AcquisitionPlanRecord":
-        match plan.schedule:
+        match plan.reads:
             case []:
                 status = ProcessStatus.PENDING
             case reads:

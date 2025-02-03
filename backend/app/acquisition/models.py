@@ -305,7 +305,7 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         default=ImagingPriority.NORMAL,
     )
 
-    schedule: list["PlatereadSpec"] = Relationship(
+    reads: list["PlatereadSpec"] = Relationship(
         back_populates="acquisition_plan", cascade_delete=True
     )
 
@@ -319,7 +319,7 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
 
 class AcquisitionPlanRecord(AcquisitionPlanBase):
     id: int
-    schedule: list["PlatereadSpecRecord"] = []
+    reads: list["PlatereadSpecRecord"] = []
 
 
 class AcquisitionPlanCreate(AcquisitionPlanBase):
@@ -352,7 +352,7 @@ class PlatereadSpec(PlatereadSpecBase, table=True):
     acquisition_plan_id: int = Field(
         foreign_key="acquisitionplan.id", ondelete="CASCADE"
     )
-    acquisition_plan: AcquisitionPlan = Relationship(back_populates="schedule")
+    acquisition_plan: AcquisitionPlan = Relationship(back_populates="reads")
 
 
 class PlatereadSpecRecord(PlatereadSpecBase):
