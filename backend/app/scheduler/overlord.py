@@ -1,14 +1,113 @@
 from datetime import datetime
 from typing import Annotated, Literal
+from xml.etree.ElementTree import canonicalize
 
+from prefect import task
+from prefect.cache_policies import NONE
 from pydantic import PlainSerializer
 from pydantic.dataclasses import dataclass
 from pydantic_xml import BaseXmlModel, attr, element
+from sqlmodel import Session
 
-from app.common.dt import to_local_tz
+from app.acquisition import crud
+from app.acquisition.models import (
+    Location,
+    PlatereadSpec,
+    PlatereadSpecUpdate,
+    ProcessStatus,
+)
+from app.common.dt import local_now, to_local_tz
+from app.core.config import settings
 
 OVERLORD_STRFMT = "%Y-%m-%d_%H-%M-%S"
-NORMAL_STRFMT = "%Y-%m-%dT%H:%M:%S"
+
+KIOSK_PATH = settings.OVERLORD_DIR / "Batches" / "Kiosk"
+
+
+@task(cache_policy=NONE)
+def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
+    plan = spec.acquisition_plan
+    storage_location_map = {
+        Location.CYTOMAT2: "C2",
+        Location.HOTEL: "Plate Hotel",
+    }
+    storage_loc = storage_location_map[plan.storage_location]
+
+    now_str = local_now().strftime(OVERLORD_STRFMT)
+    match plan.storage_location:
+        case Location.CYTOMAT2:
+            xml_prefix = "CQ1 With Live Cells "  # yes, the space is intentional....
+            storage_loc = "C2"
+            run_mode = 1
+        case Location.HOTEL:
+            xml_prefix = "Run Mode 2"
+            storage_loc = "Plate Hotel"
+            run_mode = 2
+        case _:
+            raise ValueError(f"Invalid plate storage location: {plan.storage_location}")
+
+    i = sorted(spec.acquisition_plan.reads, key=lambda x: x.deadline).index(spec) + 1
+
+    # we use the user_name param to achieve unique batch names.
+    # it needs an underscore at the end for some reason.
+    # the corresponding xml field must be populated with the same value.
+    user_name = f"{plan.acquisition.name}_"
+    parent_name = f"{xml_prefix}_{user_name}_{now_str}"
+    batch_name = f"{parent_name}_READ{i:03d}"
+    batch_path = KIOSK_PATH / f"{batch_name}.xml"
+
+    deadline = spec.deadline if spec.deadline else datetime(9999, 12, 31, 23, 59, 59)
+
+    start_after = datetime.now()
+    batch = Batch(
+        start_after=start_after,
+        batch_name=batch_name,
+        user=user_name,
+        parent_batch_name=parent_name,
+        run_mode=run_mode,
+        read_times=ReadTimeCollection(
+            items=[
+                ReadTime(
+                    index=i,
+                    interval=int(plan.interval.total_seconds() / 60),
+                    value=start_after,
+                )
+            ]
+        ),
+        labware=LabwareCollection(
+            items=[
+                Labware(
+                    index=1,
+                    type="96",
+                    barcode=plan.wellplate.name,
+                    start_location=storage_loc,
+                    end_location=storage_loc,
+                )
+            ]
+        ),
+        parameters=OverlordBatchParams(
+            wellplate_barcode=plan.wellplate.name,
+            plateread_id=spec.id,  # type: ignore
+            acquisition_name=plan.acquisition.name,
+            labware_type="96",
+            plate_location_start=storage_loc,
+            scans_per_plate=1,
+            scan_time_interval=int(plan.interval.total_seconds()),
+            cq1_protocol_name=plan.protocol_name,
+            read_barcodes=True,
+            plate_estimated_time=1337,
+            deadline=deadline,
+        ).to_parameter_collection(),
+    )
+
+    with open(batch_path, "w") as f:
+        canonicalize(batch.to_xml(), out=f)
+
+    crud.update_plateread(
+        session=session,
+        db_plateread=spec,
+        plateread_in=PlatereadSpecUpdate(status=ProcessStatus.SCHEDULED),
+    )
 
 
 class OverlordParameter(BaseXmlModel):
