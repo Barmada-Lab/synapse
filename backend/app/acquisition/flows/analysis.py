@@ -56,6 +56,7 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.END_OF_RUN
+        and analysis.status == SlurmJobStatus.UNSUBMITTED
     ]
 
     for analysis in analyses:
@@ -93,6 +94,7 @@ def handle_post_read_analyses(
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.POST_READ
         and analysis.trigger_value == read_idx
+        and analysis.status == SlurmJobStatus.UNSUBMITTED
     ]
 
     for analysis in analyses:
@@ -127,6 +129,7 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.IMMEDIATE
+        and analysis.status == SlurmJobStatus.UNSUBMITTED
     ]
 
     for analysis in analyses:
