@@ -165,6 +165,20 @@ def test_create_acquisition(pw_authenticated_client: TestClient, db: Session) ->
     assert response.status_code == status.HTTP_201_CREATED
 
 
+def test_create_acquisition_invalid_instrument_id(
+    pw_authenticated_client: TestClient,
+) -> None:
+    acquisition_create = AcquisitionCreate(
+        name=random_lower_string(), instrument_id=2**16
+    )
+    response = pw_authenticated_client.post(
+        f"{settings.API_V1_STR}/acquisitions/",
+        json=acquisition_create.model_dump(mode="json"),
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json()["detail"] == "No corresponding instrument found."
+
+
 def test_create_duplicate_acquisition_returns_409(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:

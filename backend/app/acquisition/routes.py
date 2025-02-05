@@ -62,6 +62,14 @@ def create_acquisition(
             status_code=status.HTTP_409_CONFLICT,
             detail="An acquisition with this name already exists.",
         )
+
+    instrument = session.get(Instrument, acquisition_create.instrument_id)
+    if instrument is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No corresponding instrument found.",
+        )
+
     acquisition = crud.create_acquisition(
         session=session, acquisition_create=acquisition_create
     )
