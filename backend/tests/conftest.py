@@ -1,5 +1,8 @@
+import contextlib
+import os
 from collections.abc import Generator
 
+import filelock
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, delete
@@ -69,3 +72,18 @@ def key_authenticated_client(
     with TestClient(app) as c:
         c.headers.update(superuser_api_key_headers)
         yield c
+
+
+@pytest.fixture(scope="session")
+def serial_lock(tmp_path_factory):
+    base_temp = tmp_path_factory.getbasetemp()
+    lock_file = base_temp.parent / "serial.lock"
+    yield filelock.FileLock(lock_file=str(lock_file))
+    with contextlib.suppress(OSError):
+        os.remove(path=lock_file)
+
+
+@pytest.fixture(scope="function")
+def serial(serial_lock):
+    with serial_lock.acquire():
+        yield

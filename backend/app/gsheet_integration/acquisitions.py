@@ -37,7 +37,7 @@ class CreateAcquisitionSheet(RecordSheet[CreateAcquisitionRecord]):
         instrument = crud.get_instrument_by_name(
             session=self.session, name=record.instrument_name
         )
-        if not instrument:
+        if instrument is None:
             return Failure(
                 RowError(row=record.model_dump(), message="Instrument not found")
             )

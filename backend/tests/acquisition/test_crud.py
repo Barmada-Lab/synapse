@@ -8,7 +8,7 @@ from sqlmodel import Session
 from app.acquisition import crud
 from app.acquisition.crud import (
     create_acquisition_plan,
-    schedule_plan,
+    implement_plan,
 )
 from app.acquisition.models import (
     AcquisitionCreate,
@@ -325,7 +325,7 @@ def test_materialize_schedule(db: Session) -> None:
         interval=timedelta(minutes=2),
         deadline_delta=timedelta(minutes=1),
     )
-    plan = schedule_plan(session=db, plan=plan)
+    plan = implement_plan(session=db, plan=plan)
     assert len(plan.reads) == 2
     assert all(r.status == ProcessStatus.PENDING for r in plan.reads)
 
@@ -337,7 +337,7 @@ def test_materialize_schedule(db: Session) -> None:
 
 def test_update_plateread(db: Session) -> None:
     plan = create_random_acquisition_plan(session=db)
-    plan = schedule_plan(session=db, plan=plan)
+    plan = implement_plan(session=db, plan=plan)
 
     plateread = plan.reads[0]
     plateread_in = PlatereadSpecUpdate(status=ProcessStatus.COMPLETED)

@@ -3,6 +3,7 @@ from unittest.mock import patch
 from sqlmodel import Session
 
 from app.acquisition import crud
+from app.acquisition.flows.acquisition_planning import check_to_implement_plans
 from app.acquisition.flows.analysis import (
     handle_analyses,
     handle_end_of_run_analyses,
@@ -44,7 +45,7 @@ def test_handle_analyses_with_incomplete_acquisition(db: Session):
     acquisition_plan = create_random_acquisition_plan(
         session=db, acquisition=acquisition, n_reads=1
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     with (
         patch(
             "app.acquisition.flows.analysis.handle_immediate_analyses"
@@ -66,7 +67,7 @@ def test_handle_analyses_with_complete_acquisition(db: Session):
         acquisition_plan.wellplate, acquisition_plan, db
     )
 
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     with (
         patch(
@@ -101,7 +102,7 @@ def test_handle_post_read_analyses(db: Session):
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     create_random_artifact_collection(
         session=db,
@@ -163,7 +164,7 @@ def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     create_random_artifact_collection(
         session=db,
@@ -191,7 +192,7 @@ def test_handle_end_of_run_analyses(db: Session):
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     create_random_artifact_collection(
         session=db,
@@ -252,7 +253,7 @@ def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     create_random_artifact_collection(
         session=db,
@@ -280,7 +281,7 @@ def test_immediate_analyses(db: Session):
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     create_random_artifact_collection(
         session=db,
@@ -341,7 +342,7 @@ def test_handle_immediate_analyses_no_matching_trigger(db: Session):
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
-    check_to_schedule_acquisition(wellplate_id=acquisition_plan.wellplate_id)
+    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
     complete_reads(acquisition_plan, db)
     create_random_artifact_collection(
         session=db,

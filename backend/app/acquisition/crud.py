@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
@@ -97,8 +97,14 @@ def create_acquisition_plan(
     return acquisition_plan
 
 
-def schedule_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
-    start_time = datetime.now()
+def implement_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
+    """
+    Implements a plan by creating PlatereadSpecs based on the plan's parameters and current time.
+
+    PlateReadSpecs are then scheduled for execution by the scheduler.
+    """
+    # not using the database clock here has the potential to cause issues
+    start_time = datetime.now(timezone.utc)
     for i in range(plan.n_reads):
         start_after = start_time + (i * plan.interval)
         deadline = None

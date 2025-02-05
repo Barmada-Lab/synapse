@@ -1,7 +1,7 @@
 import pytest
 from sqlmodel import Session
 
-from app.acquisition.flows.acquisition_scheduling import check_to_schedule_acquisition
+from app.acquisition.flows.acquisition_planning import check_to_implement_plans
 from app.labware import crud as labware_crud
 from app.labware.models import Location, WellplateUpdate
 from tests.acquisition.utils import (
@@ -22,7 +22,7 @@ def test_check_to_schedule_acquisition(db: Session) -> None:
         session=db, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
 
-    check_to_schedule_acquisition(wellplate_id=wellplate.id)  # type: ignore[arg-type]
+    check_to_implement_plans(wellplate_id=wellplate.id)  # type: ignore[arg-type]
 
     db.refresh(acquisition_plan)
     assert acquisition_plan.reads != []
@@ -41,7 +41,7 @@ def test_check_to_schedule_acquisition_different_storage_location(db: Session) -
         session=db, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
 
-    check_to_schedule_acquisition(wellplate_id=wellplate.id)  # type: ignore[arg-type]
+    check_to_implement_plans(wellplate_id=wellplate.id)  # type: ignore[arg-type]
 
     db.refresh(acquisition_plan)
     # plate is not present in acquisition plan's storage_location, so scheduling
@@ -51,4 +51,4 @@ def test_check_to_schedule_acquisition_different_storage_location(db: Session) -
 
 def test_check_to_schedule_acquisition_no_wellplate() -> None:
     with pytest.raises(ValueError):
-        check_to_schedule_acquisition(wellplate_id=2**16)
+        check_to_implement_plans(wellplate_id=2**16)

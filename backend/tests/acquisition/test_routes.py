@@ -4,7 +4,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.acquisition.crud import create_analysis_spec, schedule_plan
+from app.acquisition.crud import create_analysis_spec, implement_plan
 from app.acquisition.models import (
     Acquisition,
     AcquisitionCreate,
@@ -553,7 +553,7 @@ def test_update_plateread_emit_event(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
-    scheduled = schedule_plan(session=db, plan=plan)
+    scheduled = implement_plan(session=db, plan=plan)
     read = scheduled.reads[0]
     with patch("app.acquisition.routes.handle_plateread_status_update") as mock:
         response = pw_authenticated_client.patch(
@@ -578,7 +578,7 @@ def test_update_plateread_no_change(
     pw_authenticated_client: TestClient, db: Session
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
-    scheduled = schedule_plan(session=db, plan=plan)
+    scheduled = implement_plan(session=db, plan=plan)
     read = scheduled.reads[0]
     with patch("app.acquisition.routes.handle_plateread_status_update") as mock:
         response = pw_authenticated_client.patch(
@@ -594,7 +594,7 @@ def test_update_plateread_requires_authentication(
     unauthenticated_client: TestClient, db: Session
 ) -> None:
     plan = create_random_acquisition_plan(session=db)
-    scheduled = schedule_plan(session=db, plan=plan)
+    scheduled = implement_plan(session=db, plan=plan)
     read = scheduled.reads[0]
     response = unauthenticated_client.patch(
         f"{settings.API_V1_STR}/platereads/{read.id}",
