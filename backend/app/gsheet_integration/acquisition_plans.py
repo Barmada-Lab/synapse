@@ -22,6 +22,7 @@ class CreateAcquisitionPlanRecord(BaseModel):
     acquisition_name: str
     wellplate_name: str
     storage_location: Location
+    storage_position: int | None
     n_reads: int
     interval_mins: int
     deadline_delta_mins: int | None
@@ -35,6 +36,9 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
         try:
             row["deadline_delta_mins"] = (
                 int(row["deadline_delta_mins"]) if row["deadline_delta_mins"] else None
+            )
+            row["storage_position"] = (
+                int(row["storage_position"]) if row["storage_position"] else None
             )
             record = CreateAcquisitionPlanRecord.model_validate(row)
             return Success(record)
@@ -82,6 +86,7 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
                     acquisition_id=acquisition.id,
                     wellplate_id=wellplate.id,
                     storage_location=record.storage_location,
+                    storage_position=record.storage_position,
                     n_reads=record.n_reads,
                     interval=timedelta(minutes=record.interval_mins),
                     deadline_delta=deadline_delta,
@@ -106,6 +111,7 @@ class AcquisitionPlanRecord(BaseModel):
     acquisition_name: str
     wellplate_name: str
     storage_location: Location
+    storage_position: int | None
     n_reads: int
     interval_mins: int
     deadline_delta_mins: int | None
@@ -143,6 +149,7 @@ class AcquisitionPlanRecord(BaseModel):
             acquisition_name=plan.acquisition.name,
             wellplate_name=plan.wellplate.name,
             storage_location=plan.storage_location,
+            storage_position=plan.storage_position,
             n_reads=plan.n_reads,
             interval_mins=int(plan.interval.total_seconds() / 60),
             deadline_delta_mins=deadline_delta_mins,
@@ -159,6 +166,9 @@ class AcquisitionPlanSheet(RecordSheet[AcquisitionPlanRecord]):
                 row["deadline_delta_mins"] = None
             else:
                 row["deadline_delta_mins"] = int(row["deadline_delta_mins"])
+            row["storage_position"] = (
+                int(row["storage_position"]) if row["storage_position"] else None
+            )
             record = AcquisitionPlanRecord.model_validate(row)
             return Success(record)
         except Exception as e:

@@ -87,6 +87,9 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
         ),
         parameters=OverlordBatchParams(
             wellplate_barcode=plan.wellplate.name,
+            wellplate_storage_position=plan.storage_position
+            if plan.storage_position is not None
+            else -1,
             plateread_id=spec.id,  # type: ignore
             acquisition_name=plan.acquisition.name,
             labware_type="96",
@@ -94,7 +97,6 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
             scans_per_plate=1,
             scan_time_interval=int(plan.interval.total_seconds()),
             cq1_protocol_name=plan.protocol_name,
-            read_barcodes=True,
             plate_estimated_time=1337,
             deadline=deadline,
         ).to_parameter_collection(),
@@ -199,10 +201,10 @@ class OverlordBatchParams:
     acquisition_name: str
     labware_type: str
     plate_location_start: str
+    wellplate_storage_position: int
     scans_per_plate: int
     scan_time_interval: int
     cq1_protocol_name: str
-    read_barcodes: bool
     plate_estimated_time: int
     deadline: datetime
 
@@ -211,6 +213,11 @@ class OverlordBatchParams:
             items=[
                 OverlordParameter(
                     name="WELLPLATE_BARCODE", type="Text", value=self.wellplate_barcode
+                ),
+                OverlordParameter(
+                    name="WELLPLATE_STORAGE_POSITION",
+                    type="Numeric",
+                    value=str(self.wellplate_storage_position),
                 ),
                 OverlordParameter(
                     name="PLATEREAD_ID", type="Numeric", value=str(self.plateread_id)
@@ -242,7 +249,7 @@ class OverlordBatchParams:
                 OverlordParameter(
                     name="READ_BARCODES",
                     type="TrueFalse",
-                    value="True" if self.read_barcodes else "False",
+                    value="True" if self.wellplate_storage_position == -1 else "False",
                 ),
                 OverlordParameter(
                     name="PLATE_ESTIMATED_TIME",

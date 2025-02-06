@@ -28,8 +28,7 @@ class Location(str, enum.Enum):
 class WellplateBase(SQLModel):
     name: str = Field(unique=True, index=True, min_length=1, max_length=9)
     plate_type: WellplateType
-    location: Location
-    record_created: datetime
+    location: Location = Location.EXTERNAL
 
 
 # table
@@ -50,9 +49,8 @@ class Wellplate(WellplateBase, table=True):
 
 
 # requests
-class WellplateCreate(SQLModel):
-    name: str = Field(min_length=1, max_length=9)
-    plate_type: WellplateType
+class WellplateCreate(WellplateBase):
+    pass
 
 
 class WellplateUpdate(SQLModel):

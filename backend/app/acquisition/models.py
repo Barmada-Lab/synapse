@@ -284,6 +284,7 @@ class ArtifactCollectionRecord(ArtifactCollectionBase):
 class AcquisitionPlanBase(SQLModel):
     wellplate_id: int = Field(foreign_key="wellplate.id", ondelete="CASCADE")
     storage_location: Location
+    storage_position: int | None = None
     protocol_name: str = Field(max_length=255)
     n_reads: int = Field(ge=1)
     interval: timedelta = Field(default=timedelta(days=0))
@@ -295,9 +296,6 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     wellplate: Wellplate = Relationship(back_populates="acquisition_plans")
-
-    protocol_name: str = Field(max_length=255)
-    n_reads: int
 
     storage_location: Location = Field(sa_column=Column(Enum(Location), nullable=False))
     priority: ImagingPriority = Field(
