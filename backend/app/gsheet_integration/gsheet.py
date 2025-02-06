@@ -79,7 +79,7 @@ class RecordSheet[T: BaseModel](ABC):
         error_dicts = [err.row_with_error for err in errors]
         updated_records = self.compile_updated_records(errors)
         record_dicts = [record.model_dump() for record in updated_records]
-        self.df = pd.DataFrame.from_records(error_dicts + record_dicts)
+        self.df = pd.DataFrame.from_records(error_dicts + record_dicts).fillna("")
         if "error" not in self.df.columns:
             self.df["error"] = np.nan
 
