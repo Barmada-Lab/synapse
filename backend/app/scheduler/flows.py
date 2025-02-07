@@ -83,7 +83,7 @@ def schedule():
         if (normal_prio := get_next_normal_prio(session)) is not None:
             submit_plateread_spec(session=session, spec=normal_prio)
             name = normal_prio.acquisition_plan.acquisition.name
-            logger.info(f"Scheduled normal prio plateread for acquisition{name}")
+            logger.info(f"Scheduled normal prio plateread for acquisition {name}")
             return
 
         # otherwise, if a normal prio task is scheduled in the near future, stop
