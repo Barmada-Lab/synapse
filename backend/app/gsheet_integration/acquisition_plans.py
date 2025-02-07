@@ -11,6 +11,7 @@ from app.acquisition.models import (
     Acquisition,
     AcquisitionPlan,
     AcquisitionPlanCreate,
+    ImagingPriority,
     ProcessStatus,
 )
 from app.gsheet_integration.gsheet import RecordSheet, RowError
@@ -76,10 +77,18 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
                 )
             except Exception as e:
                 return Failure(RowError(row=record.model_dump(), message=str(e)))
+
+        deadline_delta = None
+        if record.deadline_delta_mins:
+            deadline_delta = timedelta(minutes=record.deadline_delta_mins)
+
+        priority = (
+            ImagingPriority.NORMAL
+            if record.storage_location == Location.CYTOMAT2
+            else ImagingPriority.LOW
+        )
+
         try:
-            deadline_delta = None
-            if record.deadline_delta_mins:
-                deadline_delta = timedelta(minutes=record.deadline_delta_mins)
             acq_crud.create_acquisition_plan(
                 session=self.session,
                 plan_create=AcquisitionPlanCreate(
@@ -91,6 +100,7 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
                     interval=timedelta(minutes=record.interval_mins),
                     deadline_delta=deadline_delta,
                     protocol_name=record.protocol_name,
+                    priority=priority,
                 ),
             )
             return Success(None)
