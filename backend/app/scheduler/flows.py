@@ -5,6 +5,7 @@ from prefect.cache_policies import NONE
 from sqlalchemy import asc, update
 from sqlmodel import Session, select
 
+from app.acquisition import crud
 from app.acquisition.models import (
     AcquisitionPlan,
     ImagingPriority,
@@ -102,6 +103,29 @@ def schedule():
             name = low_prio.acquisition_plan.acquisition.name
             logger.info(f"Scheduled low prio plateread for acquisition {name}")
             return
+
+
+@flow
+def dump_plateread_specs(acquisition_name: str):
+    logger = get_run_logger()
+    with get_db() as session:
+        acquisition = crud.get_acquisition_by_name(
+            session=session, name=acquisition_name
+        )
+        if acquisition is None:
+            logger.info(f"No plateread spec found for acquisition {acquisition_name}")
+            return
+
+        if not acquisition.acquisition_plan:
+            logger.info(f"Acquisition {acquisition_name} has no acquisition plan")
+            return
+
+        if not acquisition.acquisition_plan.reads:
+            crud.implement_plan(session=session, plan=acquisition.acquisition_plan)
+            session.refresh(acquisition.acquisition_plan)
+
+        for read in acquisition.acquisition_plan.reads:
+            submit_plateread_spec(session=session, spec=read)
 
 
 def get_deployments():
