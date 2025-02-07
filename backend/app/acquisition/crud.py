@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
@@ -110,6 +110,8 @@ def implement_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPla
         deadline = None
         if plan.deadline_delta:
             deadline = start_after + plan.deadline_delta
+        else:
+            deadline = start_after + timedelta(days=9999)
         session.add(
             PlatereadSpec(
                 start_after=start_after,
