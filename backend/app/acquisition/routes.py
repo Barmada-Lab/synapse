@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
+from prefect.blocks.notifications import SlackWebhook
 from sqlmodel import func, select
 
 from app.core.deps import SessionDep
@@ -26,6 +27,7 @@ from .models import (
     InstrumentTypeCreate,
     InstrumentTypeList,
     InstrumentTypeRecord,
+    OverlordAlert,
     PlatereadSpec,
     PlatereadSpecRecord,
     PlatereadSpecUpdate,
@@ -328,4 +330,12 @@ def delete_instrument(session: SessionDep, id: int) -> Response:
         )
     session.delete(instrument)
     session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@api_router.post("/alerts")
+def alert_overlord_error(alert: OverlordAlert) -> Response:
+    # prefect was written by monkeys so these type definitions are completely fucked
+    slack_webhook = SlackWebhook.load("tmnl-slack-webhook")  # type: ignore
+    slack_webhook.notify(alert.message)  # type: ignore
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -450,3 +450,7 @@ def get_artifact_collection_path(
     if repository == Repository.ARCHIVE_STORE:
         artifact_collection_file += TAR_ZST_EXTENSION
     return acquisition_path / artifact_collection_file
+
+
+class OverlordAlert(SQLModel):
+    message: str
