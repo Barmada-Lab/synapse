@@ -21,7 +21,8 @@ from app.core.config import settings
 
 OVERLORD_STRFMT = "%Y-%m-%d_%H-%M-%S"
 
-KIOSK_PATH = settings.OVERLORD_DIR / "Batches" / "Kiosk"
+BATCHES_PATH = settings.OVERLORD_DIR / "Batches"
+KIOSK_PATH = BATCHES_PATH / "Staging"
 
 
 @task(cache_policy=NONE)
