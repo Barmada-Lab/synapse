@@ -30,6 +30,7 @@ def cancel_past_deadline(session: Session):
     session.execute(
         update(PlatereadSpec)
         .where(PlatereadSpec.deadline < datetime.now(timezone.utc))  # type: ignore
+        .where(PlatereadSpec.status == ProcessStatus.PENDING)  # type: ignore
         .values(status=ProcessStatus.CANCELLED)
     )
     session.commit()
@@ -44,7 +45,7 @@ def get_next_task(session: Session, start_after: datetime, priority: ImagingPrio
         .where(PlatereadSpec.start_after < start_after)
         .where(AcquisitionPlan.priority == priority)
         .where(Wellplate.location == AcquisitionPlan.storage_location)
-        .order_by(asc(PlatereadSpec.start_after))  # type: ignore
+        .order_by(asc(PlatereadSpec.deadline))  # type: ignore
         .limit(1)
     )
     return session.exec(statement).first()
