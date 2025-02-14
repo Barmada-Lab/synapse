@@ -2,9 +2,9 @@ import re
 import shlex
 
 from globus_compute_sdk import Executor, ShellFunction, ShellResult
-from prefect import get_run_logger, task
+from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NONE
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.acquisition import crud
 from app.acquisition.models import (
@@ -14,32 +14,52 @@ from app.acquisition.models import (
     ProcessStatus,
     Repository,
     SBatchAnalysisSpec,
+    SBatchJob,
     SBatchJobCreate,
+    SBatchJobUpdate,
     SlurmJobState,
 )
 from app.core.config import settings
+from app.core.deps import get_db
 
 JOB_SUBMIT_REGEX = r"Submitted batch job (?P<job_id>\d+)"
+JOB_STATE_REGEX = r"JobState=(?P<status>\w+)"
+
+
+def submit_sbatch_job(sbatch_args: list[str], executor: Executor) -> int:
+    command = shlex.join(["sbatch", *sbatch_args])
+    result: ShellResult = executor.submit(ShellFunction(command)).result()
+    if result.returncode != 0:
+        raise ValueError(
+            f"Command {command} failed with return code {result.returncode}: {result.stderr}"
+        )
+
+    match = re.search(JOB_SUBMIT_REGEX, result.stdout)
+    if match is None:
+        raise ValueError(f"Failed to parse job ID from stdout: {result.stdout}")
+    return int(match.group("job_id"))
+
+
+def get_job_status(job_id: int, executor: Executor):
+    command = shlex.join(["scontrol", "show", "job", str(job_id)])
+    result = executor.submit(ShellFunction(command)).result()
+    if result.returncode != 0:
+        raise ValueError(f"Failed to query job {job_id}: {result.stderr}")
+
+    match = re.search(JOB_STATE_REGEX, result.stdout)
+    if match is None:
+        raise ValueError(f"Failed to parse job state from stdout: {result.stdout}")
+
+    return SlurmJobState(match.group("status"))
 
 
 @task(cache_policy=NONE)  # type: ignore[arg-type]
 def submit_sbatch_analysis(
     analysis_spec: SBatchAnalysisSpec, executor: Executor, session: Session
 ):
-    command = shlex.join(
-        ["sbatch", analysis_spec.analysis_cmd, *analysis_spec.analysis_args]
+    job_id = submit_sbatch_job(
+        [analysis_spec.analysis_cmd, *analysis_spec.analysis_args], executor
     )
-    result: ShellResult = executor.submit(ShellFunction(command)).result()
-    if result.returncode != 0:
-        raise ValueError(
-            f"Failed to submit analysis {analysis_spec.id}: {result.stderr}"
-        )
-
-    match = re.search(JOB_SUBMIT_REGEX, result.stdout)
-    if match is None:
-        raise ValueError(f"Failed to parse job ID from stdout: {result.stdout}")
-    job_id = int(match.group("job_id"))
-
     crud.create_sbatch_job(
         session=session,
         create=SBatchJobCreate(
@@ -186,3 +206,28 @@ def handle_analyses(acquisition: Acquisition, session: Session):
         handle_post_read_analyses(n_complete, acquisition, session)
         if n_end_states == total_reads:
             handle_end_of_run_analyses(acquisition, session)
+
+
+@flow
+def sync_analysis_jobs():
+    with (
+        get_db() as session,
+        Executor(endpoint_id=settings.GLOBUS_ENDPOINT_ID) as executor,
+    ):
+        active_jobs = session.exec(
+            select(SBatchJob).where(
+                SBatchJob.status
+                in [
+                    SlurmJobState.PENDING,
+                    SlurmJobState.RUNNING,
+                    SlurmJobState.PREEMPTED,
+                    SlurmJobState.SUSPENDED,
+                ]
+            )
+        ).all()
+
+        for job in active_jobs:
+            status = get_job_status(job.slurm_id, executor)
+            crud.update_sbatch_job(
+                session=session, db_job=job, update=SBatchJobUpdate(status=status)
+            )
