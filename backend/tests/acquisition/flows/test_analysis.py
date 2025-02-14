@@ -1,3 +1,4 @@
+import random
 from unittest.mock import patch
 
 from sqlmodel import Session
@@ -14,8 +15,8 @@ from app.acquisition.models import (
     AnalysisTrigger,
     ArtifactType,
     Repository,
-    SBatchAnalysisSpecUpdate,
-    SlurmJobStatus,
+    SBatchJobCreate,
+    SlurmJobState,
 )
 from tests.acquisition.utils import (
     complete_reads,
@@ -27,7 +28,7 @@ from tests.acquisition.utils import (
 )
 
 
-def test_handle_analyses_no_acquisition_plan(db: Session):
+def test_handle_analyses_when_no_acquisition_plan(db: Session):
     """Only calls immediate analyses"""
     acquisition = create_random_acquisition(session=db)
     create_random_artifact_collection(session=db, acquisition=acquisition)
@@ -98,7 +99,7 @@ def test_handle_post_read_analyses(db: Session):
         analysis_trigger=AnalysisTrigger.POST_READ,
         trigger_value=1,
     )
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
@@ -110,42 +111,9 @@ def test_handle_post_read_analyses(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    handle_post_read_analyses(1, acquisition, db)
-    db.refresh(analysis)
-    assert analysis.status == SlurmJobStatus.SUBMITTED
-
-
-def test_handle_post_read_analyses_already_submitted(db: Session):
-    """Does not submit analyses if already submitted"""
-    acquisition = create_random_acquisition(session=db)
-    acquisition_plan = create_random_acquisition_plan(
-        session=db, acquisition=acquisition, n_reads=1
-    )
-    analysis = create_random_analysis_spec(
-        session=db,
-        acquisition=acquisition,
-        analysis_trigger=AnalysisTrigger.POST_READ,
-        trigger_value=1,
-    )
-    move_plate_to_acquisition_plan_location(
-        acquisition_plan.wellplate, acquisition_plan, db
-    )
-    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
-    complete_reads(acquisition_plan, db)
-    create_random_artifact_collection(
-        session=db,
-        artifact_type=ArtifactType.ACQUISITION_DATA,
-        location=Repository.ANALYSIS_STORE,
-        acquisition=acquisition,
-    )
-    crud.update_analysis_spec(
-        session=db,
-        db_analysis=analysis,
-        update=SBatchAnalysisSpecUpdate(status=SlurmJobStatus.SUBMITTED),
-    )
-    with patch("app.acquisition.flows.analysis.submit_analysis_request") as mock_submit:
+    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
         handle_post_read_analyses(1, acquisition, db)
-        mock_submit.assert_not_called()
+        mock_submit.assert_called_once()
 
 
 def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
@@ -160,7 +128,7 @@ def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
         analysis_trigger=AnalysisTrigger.POST_READ,
         trigger_value=0,
     )
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
@@ -172,9 +140,9 @@ def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    handle_post_read_analyses(1, acquisition, db)
-    db.refresh(analysis)
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+        handle_post_read_analyses(1, acquisition, db)
+        mock_submit.assert_not_called()
 
 
 def test_handle_end_of_run_analyses(db: Session):
@@ -188,7 +156,7 @@ def test_handle_end_of_run_analyses(db: Session):
         acquisition=acquisition,
         analysis_trigger=AnalysisTrigger.END_OF_RUN,
     )
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
@@ -200,41 +168,9 @@ def test_handle_end_of_run_analyses(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    handle_end_of_run_analyses(acquisition, db)
-    db.refresh(analysis)
-    assert analysis.status == SlurmJobStatus.SUBMITTED
-
-
-def test_handle_end_of_run_analyses_already_submitted(db: Session):
-    """Does not submit analyses if already submitted"""
-    acquisition = create_random_acquisition(session=db)
-    acquisition_plan = create_random_acquisition_plan(
-        session=db, acquisition=acquisition, n_reads=1
-    )
-    analysis = create_random_analysis_spec(
-        session=db,
-        acquisition=acquisition,
-        analysis_trigger=AnalysisTrigger.END_OF_RUN,
-    )
-    move_plate_to_acquisition_plan_location(
-        acquisition_plan.wellplate, acquisition_plan, db
-    )
-    check_to_implement_plans(wellplate_id=acquisition_plan.wellplate_id)
-    complete_reads(acquisition_plan, db)
-    create_random_artifact_collection(
-        session=db,
-        artifact_type=ArtifactType.ACQUISITION_DATA,
-        location=Repository.ANALYSIS_STORE,
-        acquisition=acquisition,
-    )
-    crud.update_analysis_spec(
-        session=db,
-        db_analysis=analysis,
-        update=SBatchAnalysisSpecUpdate(status=SlurmJobStatus.SUBMITTED),
-    )
-    with patch("app.acquisition.flows.analysis.submit_analysis_request") as mock_submit:
+    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
         handle_end_of_run_analyses(acquisition, db)
-        mock_submit.assert_not_called()
+        mock_submit.assert_called_once()
 
 
 def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
@@ -249,7 +185,7 @@ def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
         analysis_trigger=AnalysisTrigger.POST_READ,
         trigger_value=0,
     )
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
@@ -261,9 +197,9 @@ def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    handle_end_of_run_analyses(acquisition, db)
-    db.refresh(analysis)
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+        handle_end_of_run_analyses(acquisition, db)
+        mock_submit.assert_not_called()
 
 
 def test_immediate_analyses(db: Session):
@@ -277,7 +213,7 @@ def test_immediate_analyses(db: Session):
         acquisition=acquisition,
         analysis_trigger=AnalysisTrigger.IMMEDIATE,
     )
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
@@ -289,9 +225,9 @@ def test_immediate_analyses(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    handle_immediate_analyses(acquisition, db)
-    db.refresh(analysis)
-    assert analysis.status == SlurmJobStatus.SUBMITTED
+    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+        handle_immediate_analyses(acquisition, db)
+        mock_submit.assert_called_once()
 
 
 def test_immediate_analyses_already_submitted(db: Session):
@@ -316,12 +252,15 @@ def test_immediate_analyses_already_submitted(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    crud.update_analysis_spec(
+    crud.create_sbatch_job(
         session=db,
-        db_analysis=analysis,
-        update=SBatchAnalysisSpecUpdate(status=SlurmJobStatus.SUBMITTED),
+        create=SBatchJobCreate(
+            status=SlurmJobState.RUNNING,
+            slurm_id=random.randint(1, 1000000),
+            analysis_spec_id=analysis.id,
+        ),
     )
-    with patch("app.acquisition.flows.analysis.submit_analysis_request") as mock_submit:
+    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
         handle_immediate_analyses(acquisition, db)
         mock_submit.assert_not_called()
 
@@ -338,7 +277,7 @@ def test_handle_immediate_analyses_no_matching_trigger(db: Session):
         analysis_trigger=AnalysisTrigger.END_OF_RUN,
         trigger_value=0,
     )
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)
     move_plate_to_acquisition_plan_location(
         acquisition_plan.wellplate, acquisition_plan, db
     )
@@ -352,4 +291,4 @@ def test_handle_immediate_analyses_no_matching_trigger(db: Session):
     )
     handle_immediate_analyses(acquisition, db)
     db.refresh(analysis)
-    assert analysis.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(analysis.jobs)

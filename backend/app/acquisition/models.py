@@ -30,15 +30,19 @@ class ProcessStatus(str, enum.Enum):
         ]
 
 
-class SlurmJobStatus(str, enum.Enum):
-    UNSUBMITTED = "UNSUBMITTED"
-    SUBMITTED = "SUBMITTED"
-    PENDING = "PENDING"
-    RUNNING = "RUNNING"
-    COMPLETED = "COMPLETED"
+class SlurmJobState(str, enum.Enum):
+    BOOT_FAIL = "BOOT_FAIL"
     CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    DEADLINE = "DEADLINE"
     FAILED = "FAILED"
-    UNHANDLED = "UNHANDLED"
+    NODE_FAIL = "NODE_FAIL"
+    OUT_OF_MEMORY = "OUT_OF_MEMORY"
+    PENDING = "PENDING"
+    PREEMPTED = "PREEMPTED"
+    RUNNING = "RUNNING"
+    SUSPENDED = "SUSPENDED"
+    TIMEOUT = "TIMEOUT"
 
 
 class ImagingPriority(str, enum.Enum):
@@ -403,14 +407,19 @@ class SBatchAnalysisSpec(SBatchAnalysisSpecBase, table=True):
     )
     trigger_value: int | None
 
-    status: SlurmJobStatus = Field(
-        sa_column=Column(Enum(SlurmJobStatus), nullable=False),
-        default=SlurmJobStatus.UNSUBMITTED,
-    )
     analysis_cmd: str = Field(max_length=255)
     analysis_args: list[str] = Field(
         sa_column=Column(sa.ARRAY(sa.String), nullable=False), default_factory=list
     )
+
+    jobs: list["SBatchJob"] = Relationship(
+        back_populates="analysis_spec", cascade_delete=True
+    )
+
+    @computed_field  # type: ignore
+    @property
+    def jobs_chronological(self) -> list["SBatchJob"]:
+        return sorted(self.jobs, key=lambda x: x.created_at)  # type: ignore
 
     analysis_plan_id: int = Field(foreign_key="analysisplan.id", ondelete="CASCADE")
     analysis_plan: AnalysisPlan = Relationship(back_populates="sbatch_analyses")
@@ -431,11 +440,53 @@ class SBatchAnalysisSpecCreate(SBatchAnalysisSpecBase):
 
 class SBatchAnalysisSpecRecord(SBatchAnalysisSpecBase):
     id: int
-    status: SlurmJobStatus
 
 
-class SBatchAnalysisSpecUpdate(SQLModel):
-    status: SlurmJobStatus
+class SBatchJobBase(SQLModel):
+    status: SlurmJobState
+    slurm_id: int
+
+
+class SBatchJob(SBatchJobBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime | None = Field(
+        default=None,
+        sa_column_kwargs={
+            "server_default": sa.func.now(),
+        },
+    )
+    updated_at: datetime | None = Field(
+        default=None,
+        sa_column_kwargs={
+            "onupdate": sa.func.now(),
+        },
+    )
+    status: SlurmJobState = Field(
+        sa_column=Column(Enum(SlurmJobState), nullable=False),
+    )
+    slurm_id: int = Field(unique=True, index=True)
+
+    analysis_spec_id: int = Field(
+        foreign_key="sbatchanalysisspec.id", ondelete="CASCADE"
+    )
+    analysis_spec: SBatchAnalysisSpec = Relationship(back_populates="jobs")
+
+
+class SBatchJobCreate(SBatchJobBase):
+    analysis_spec_id: int
+
+
+class SBatchJobRecord(SBatchJobBase):
+    id: int
+
+
+class SBatchJobList(SQLModel):
+    data: list[SBatchJobRecord]
+    count: int
+
+
+class SBatchJobUpdate(SQLModel):
+    status: SlurmJobState
 
 
 def get_acquisition_path(repository: Repository, acquisition_name: str) -> Path:

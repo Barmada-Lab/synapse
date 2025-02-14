@@ -1,8 +1,10 @@
+import re
+import shlex
+
+from globus_compute_sdk import Executor, ShellFunction, ShellResult
 from prefect import get_run_logger, task
 from prefect.cache_policies import NONE
-from prefect.events import emit_event
 from sqlmodel import Session
-from synapse_greatlakes.messages import RequestSubmitJob, SynapseGreatlakesMessage
 
 from app.acquisition import crud
 from app.acquisition.models import (
@@ -12,25 +14,39 @@ from app.acquisition.models import (
     ProcessStatus,
     Repository,
     SBatchAnalysisSpec,
-    SBatchAnalysisSpecUpdate,
-    SlurmJobStatus,
+    SBatchJobCreate,
+    SlurmJobState,
 )
+from app.core.config import settings
+
+JOB_SUBMIT_REGEX = r"Submitted batch job (?P<job_id>\d+)"
 
 
 @task(cache_policy=NONE)  # type: ignore[arg-type]
-def submit_analysis_request(analysis_spec: SBatchAnalysisSpec, session: Session):
-    event = SynapseGreatlakesMessage(
-        resource=f"sbatch_analysis.{analysis_spec.id}",
-        payload=RequestSubmitJob(
-            script=analysis_spec.analysis_cmd,
-            args=analysis_spec.analysis_args,
-        ),
-    ).to_event()
-    emit_event(**event.model_dump())
-    crud.update_analysis_spec(
+def submit_sbatch_analysis(
+    analysis_spec: SBatchAnalysisSpec, executor: Executor, session: Session
+):
+    command = shlex.join(
+        ["sbatch", analysis_spec.analysis_cmd, *analysis_spec.analysis_args]
+    )
+    result: ShellResult = executor.submit(ShellFunction(command)).result()
+    if result.returncode != 0:
+        raise ValueError(
+            f"Failed to submit analysis {analysis_spec.id}: {result.stderr}"
+        )
+
+    match = re.search(JOB_SUBMIT_REGEX, result.stdout)
+    if match is None:
+        raise ValueError(f"Failed to parse job ID from stdout: {result.stdout}")
+    job_id = int(match.group("job_id"))
+
+    crud.create_sbatch_job(
         session=session,
-        db_analysis=analysis_spec,
-        update=SBatchAnalysisSpecUpdate(status=SlurmJobStatus.SUBMITTED),
+        create=SBatchJobCreate(
+            status=SlurmJobState.PENDING,
+            slurm_id=job_id,
+            analysis_spec_id=analysis_spec.id,
+        ),
     )
 
 
@@ -56,15 +72,15 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.END_OF_RUN
-        and analysis.status == SlurmJobStatus.UNSUBMITTED
     ]
 
-    for analysis in analyses:
-        logger.info(
-            f"Submitting end-of-run analysis {analysis} for acquisition \
-                {acquisition.name}"
-        )
-        submit_analysis_request(analysis, session)
+    with Executor(endpoint_id=settings.GLOBUS_ENDPOINT_ID) as executor:
+        for analysis in analyses:
+            logger.info(
+                f"Submitting end-of-run analysis {analysis} for acquisition \
+                        {acquisition.name}"
+            )
+            submit_sbatch_analysis(analysis, executor, session)
 
 
 @task(cache_policy=NONE)  # type: ignore[arg-type]
@@ -94,15 +110,15 @@ def handle_post_read_analyses(
         for analysis in acquisition.analysis_plan.sbatch_analyses
         if analysis.trigger == AnalysisTrigger.POST_READ
         and analysis.trigger_value == read_idx
-        and analysis.status == SlurmJobStatus.UNSUBMITTED
     ]
 
-    for analysis in analyses:
-        logger.info(
-            f"Submitting post-read analysis {analysis} for acquisition \
-                {acquisition.name}"
-        )
-        submit_analysis_request(analysis, session)
+    with Executor(endpoint_id=settings.GLOBUS_ENDPOINT_ID) as executor:
+        for analysis in analyses:
+            logger.info(
+                f"Submitting post-read analysis {analysis} for acquisition \
+                    {acquisition.name}"
+            )
+            submit_sbatch_analysis(analysis, executor, session)
 
 
 @task(cache_policy=NONE)  # type: ignore[arg-type]
@@ -128,16 +144,16 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
     analyses = [
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
-        if analysis.trigger == AnalysisTrigger.IMMEDIATE
-        and analysis.status == SlurmJobStatus.UNSUBMITTED
+        if analysis.trigger == AnalysisTrigger.IMMEDIATE and not any(analysis.jobs)
     ]
 
-    for analysis in analyses:
-        logger.info(
-            f"Submitting immediate analysis {analysis} for acquisition \
-                {acquisition.name}"
-        )
-        submit_analysis_request(analysis, session)
+    with Executor(endpoint_id=settings.GLOBUS_ENDPOINT_ID) as executor:
+        for analysis in analyses:
+            logger.info(
+                f"Submitting immediate analysis {analysis} for acquisition \
+                    {acquisition.name}"
+            )
+            submit_sbatch_analysis(analysis, executor, session)
 
 
 @task(cache_policy=NONE)  # type: ignore[arg-type]

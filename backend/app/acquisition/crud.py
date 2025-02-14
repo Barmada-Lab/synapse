@@ -20,7 +20,9 @@ from .models import (
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
-    SBatchAnalysisSpecUpdate,
+    SBatchJob,
+    SBatchJobCreate,
+    SBatchJobUpdate,
 )
 
 
@@ -156,20 +158,6 @@ def create_analysis_spec(
     return analysis
 
 
-def update_analysis_spec(
-    *,
-    session: Session,
-    db_analysis: SBatchAnalysisSpec,
-    update: SBatchAnalysisSpecUpdate,
-) -> SBatchAnalysisSpec:
-    analysis_data = update.model_dump(exclude_unset=True)
-    db_analysis.sqlmodel_update(analysis_data)
-    session.add(db_analysis)
-    session.commit()
-    session.refresh(db_analysis)
-    return db_analysis
-
-
 def get_analysis_spec(
     *,
     session: Session,
@@ -216,3 +204,27 @@ def get_instrument_type_by_name(
 ) -> InstrumentType | None:
     statement = select(InstrumentType).where(InstrumentType.name == name)
     return session.exec(statement).first()
+
+
+def create_sbatch_job(*, session: Session, create: SBatchJobCreate) -> SBatchJob:
+    job = SBatchJob.model_validate(create)
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+def get_sbatch_job_by_slurm_id(*, session: Session, slurm_id: int) -> SBatchJob | None:
+    statement = select(SBatchJob).where(SBatchJob.slurm_id == slurm_id)
+    return session.exec(statement).first()
+
+
+def update_sbatch_job(
+    *, session: Session, db_job: SBatchJob, update: SBatchJobUpdate
+) -> SBatchJob:
+    job_data = update.model_dump(exclude_unset=True)
+    db_job.sqlmodel_update(job_data)
+    session.add(db_job)
+    session.commit()
+    session.refresh(db_job)
+    return db_job

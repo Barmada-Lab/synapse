@@ -153,5 +153,7 @@ class Settings(BaseSettings):
     G_SACCT_CREDS_BLOCK_ID: str = "google-sheets-token"
     IMAGING_SPREADSHEET_ID: str = ""
 
+    GLOBUS_ENDPOINT_ID: str = ""
+
 
 settings = Settings()  # type: ignore

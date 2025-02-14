@@ -23,13 +23,13 @@ dependencies = [
     "pyjwt<3.0.0,>=2.8.0",
     "prefect>=3.0.11",
     "pydantic-xml>=2.14.0",
-    "synapse-greatlakes",
     "natsort>=8.4.0",
     "returns>=0.24.0",
     "gspread>=6.1.4",
     "gspread-formatting>=1.2.0",
     "pandas>=2.2.3",
     "fastapi-events>=0.12.2",
+    "globus-compute-sdk>=3.0.1",
 ]
 
 [project.scripts]
@@ -49,7 +49,6 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
-synapse-greatlakes = { git = "git+ssh://git@github.com/Barmada-Lab/synapse-greatlakes.git" }
 
 [build-system]
 requires = ["hatchling"]

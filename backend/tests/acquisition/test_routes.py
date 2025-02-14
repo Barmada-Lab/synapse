@@ -22,8 +22,6 @@ from app.acquisition.models import (
     InstrumentTypeRecord,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
-    SBatchAnalysisSpecUpdate,
-    SlurmJobStatus,
 )
 from app.core.config import settings
 from app.labware.models import Location
@@ -31,7 +29,6 @@ from tests.acquisition.utils import (
     create_random_acquisition,
     create_random_acquisition_plan,
     create_random_analysis_plan,
-    create_random_analysis_spec,
     create_random_instrument,
     create_random_instrument_type,
 )
@@ -370,38 +367,6 @@ def test_create_analysis_requires_authentication(
     response = unauthenticated_client.post(
         f"{settings.API_V1_STR}/analyses",
         json=analysis.model_dump(mode="json"),
-    )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
-def test_update_analysis(pw_authenticated_client: TestClient, db: Session) -> None:
-    spec = create_random_analysis_spec(session=db)
-    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
-    response = pw_authenticated_client.patch(
-        f"{settings.API_V1_STR}/analyses/{spec.id}",
-        json=update.model_dump(mode="json"),
-    )
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json()["status"] == SlurmJobStatus.COMPLETED.value
-
-
-def test_update_analysis_not_found(pw_authenticated_client: TestClient) -> None:
-    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
-    response = pw_authenticated_client.patch(
-        f"{settings.API_V1_STR}/analyses/{2**16}",
-        json=update.model_dump(mode="json"),
-    )
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json()["detail"] == "Analysis specification not found."
-
-
-def test_update_analysis_requires_authentication(
-    unauthenticated_client: TestClient,
-) -> None:
-    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
-    response = unauthenticated_client.patch(
-        f"{settings.API_V1_STR}/analyses/1",
-        json=update.model_dump(mode="json"),
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

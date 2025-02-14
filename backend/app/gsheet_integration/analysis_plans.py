@@ -12,7 +12,7 @@ from app.acquisition.models import (
     AnalysisTrigger,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
-    SlurmJobStatus,
+    SlurmJobState,
 )
 from app.gsheet_integration.gsheet import RecordSheet, RowError
 
@@ -88,18 +88,22 @@ class AnalysisPlanRecord(BaseModel):
     analysis_args: str
     analysis_trigger: AnalysisTrigger
     trigger_value: int | None = None
-    analysis_status: SlurmJobStatus
+    analysis_status: SlurmJobState
     action: AnalysisPlanRecordAction
 
     @staticmethod
     def from_db(spec: SBatchAnalysisSpec) -> "AnalysisPlanRecord":
+        if any(spec.jobs):
+            status = spec.jobs_chronological[-1].status
+        else:
+            status = SlurmJobState.PENDING
         return AnalysisPlanRecord(
             acquisition_name=spec.analysis_plan.acquisition.name,
             analysis_cmd=spec.analysis_cmd,
             analysis_args=",".join(spec.analysis_args),
             analysis_trigger=spec.trigger,
             trigger_value=spec.trigger_value,
-            analysis_status=spec.status,
+            analysis_status=status,
             action=AnalysisPlanRecord.AnalysisPlanRecordAction.none,
         )
 

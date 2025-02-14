@@ -25,8 +25,6 @@ from app.acquisition.models import (
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
-    SBatchAnalysisSpecUpdate,
-    SlurmJobStatus,
 )
 from app.labware.models import Location, Wellplate
 from tests.acquisition.utils import (
@@ -376,7 +374,7 @@ def test_create_analysis_spec(db: Session) -> None:
     )
     spec = crud.create_analysis_spec(session=db, create=spec_create)
     assert spec.analysis_plan_id == plan.id
-    assert spec.status == SlurmJobStatus.UNSUBMITTED
+    assert not any(spec.jobs)
 
 
 def test_delete_analysis_spec(db: Session) -> None:
@@ -399,13 +397,6 @@ def test_delete_analysis_plan_cascades_delete(db: Session) -> None:
     db.delete(spec.analysis_plan)
     db.commit()
     assert db.get(SBatchAnalysisSpec, spec.id) is None
-
-
-def test_update_analysis_spec(db: Session) -> None:
-    spec = create_random_analysis_spec(session=db)
-    update = SBatchAnalysisSpecUpdate(status=SlurmJobStatus.COMPLETED)
-    updated = crud.update_analysis_spec(session=db, db_analysis=spec, update=update)
-    assert updated.status == SlurmJobStatus.COMPLETED
 
 
 def test_create_instrument_type(db: Session) -> None:
