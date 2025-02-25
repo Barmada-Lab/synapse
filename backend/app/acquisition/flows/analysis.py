@@ -4,15 +4,13 @@ import shlex
 from globus_compute_sdk import Executor, ShellFunction, ShellResult
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NONE
-from sqlmodel import Session, select
+from sqlmodel import Session, or_, select
 
 from app.acquisition import crud
 from app.acquisition.models import (
     Acquisition,
     AnalysisTrigger,
-    ArtifactType,
     ProcessStatus,
-    Repository,
     SBatchAnalysisSpec,
     SBatchJob,
     SBatchJobCreate,
@@ -80,14 +78,6 @@ def handle_end_of_run_analyses(acquisition: Acquisition, session: Session):
         )
         return
 
-    acquisition_data = acquisition.get_collection(
-        ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
-    )
-    if not acquisition_data:
-        raise ValueError(
-            f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
-        )
-
     analyses = [
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
@@ -117,14 +107,6 @@ def handle_post_read_analyses(
         )
         return
 
-    acquisition_data = acquisition.get_collection(
-        ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
-    )
-    if not acquisition_data:
-        raise ValueError(
-            f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
-        )
-
     analyses = [
         analysis
         for analysis in acquisition.analysis_plan.sbatch_analyses
@@ -147,19 +129,6 @@ def handle_immediate_analyses(acquisition: Acquisition, session: Session):
     if acquisition.analysis_plan is None:
         logger.info(f"No analysis plan found for acquisition {acquisition.name}")
         return
-
-    match acquisition.instrument.instrument_type.name:
-        case "PCR":
-            # HACK: just ignore acquistion data check for pcr; we pull from google drive in the analysis stage
-            pass
-        case _:
-            acquisition_data = acquisition.get_collection(
-                ArtifactType.ACQUISITION_DATA, Repository.ANALYSIS_STORE
-            )
-            if acquisition_data is None:
-                raise ValueError(
-                    f"Acquisition {acquisition.name} has no acquisition collection in {Repository.ANALYSIS_STORE}"
-                )
 
     analyses = [
         analysis
@@ -185,12 +154,6 @@ def handle_analyses(acquisition: Acquisition, session: Session):
     submit post-read or end-of-run analyses as necessary. If no acquisition plan
     is found, this function will check for end-of-run analyses to submit.
     """
-    logger = get_run_logger()
-    if not acquisition.collections_list:
-        logger.info(
-            f"No collections found for acquisition {acquisition.name}; skipping analysis"
-        )
-        return
 
     handle_immediate_analyses(acquisition, session)
 
@@ -216,13 +179,12 @@ def sync_analysis_jobs():
     ):
         active_jobs = session.exec(
             select(SBatchJob).where(
-                SBatchJob.status
-                in [
-                    SlurmJobState.PENDING,
-                    SlurmJobState.RUNNING,
-                    SlurmJobState.PREEMPTED,
-                    SlurmJobState.SUSPENDED,
-                ]
+                or_(
+                    SBatchJob.status == SlurmJobState.PENDING,
+                    SBatchJob.status == SlurmJobState.RUNNING,
+                    SBatchJob.status == SlurmJobState.PREEMPTED,
+                    SBatchJob.status == SlurmJobState.SUSPENDED,
+                )
             )
         ).all()
 
