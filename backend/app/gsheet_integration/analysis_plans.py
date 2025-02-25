@@ -58,12 +58,22 @@ class CreateAnalysisPlanSheet(RecordSheet[CreateAnalysisPlanRecord]):
                 session=self.session,
                 acquisition_id=acquisition.id,  # type: ignore[arg-type]
             )
+        analysis_args = [token.strip() for token in record.analysis_args.split(",")]
+        preexisting_sbatch = crud.get_analysis_spec(
+            session=self.session,
+            analysis_plan_id=analysis_plan.id,  # type: ignore[arg-type]
+            analysis_cmd=record.analysis_cmd,
+            analysis_args=analysis_args,
+        )
+        if preexisting_sbatch:
+            self.session.delete(preexisting_sbatch)
+            self.session.commit()
         try:
             sbatch = SBatchAnalysisSpecCreate(
                 trigger=record.analysis_trigger,
                 trigger_value=record.trigger_value,
                 analysis_cmd=record.analysis_cmd,
-                analysis_args=record.analysis_args.split(","),
+                analysis_args=analysis_args,
                 analysis_plan_id=analysis_plan.id,
             )
             crud.create_analysis_spec(session=self.session, create=sbatch)
