@@ -25,7 +25,10 @@ JOB_STATE_REGEX = r"JobState=(?P<status>\w+)"
 
 
 def submit_sbatch_job(sbatch_args: list[str], executor: Executor) -> int:
-    command = shlex.join(["sbatch", *sbatch_args])
+    cd_cmd = shlex.join(["cd", settings.GLOBUS_ENDPOINT_CWD.as_posix()])
+    sbatch_cmd = shlex.join(["sbatch", *sbatch_args])
+    command = f"{cd_cmd} && {sbatch_cmd}"
+
     result: ShellResult = executor.submit(ShellFunction(command)).result()
     if result.returncode != 0:
         raise ValueError(
@@ -56,7 +59,11 @@ def submit_sbatch_analysis(
     analysis_spec: SBatchAnalysisSpec, executor: Executor, session: Session
 ):
     job_id = submit_sbatch_job(
-        [analysis_spec.analysis_cmd, *analysis_spec.analysis_args], executor
+        [
+            analysis_spec.analysis_cmd,
+            *analysis_spec.analysis_args,
+        ],
+        executor,
     )
     crud.create_sbatch_job(
         session=session,

@@ -154,6 +154,7 @@ class Settings(BaseSettings):
     IMAGING_SPREADSHEET_ID: str = ""
 
     GLOBUS_ENDPOINT_ID: str = ""
+    GLOBUS_ENDPOINT_CWD: Path = Path("/tmp")
 
 
 settings = Settings()  # type: ignore
