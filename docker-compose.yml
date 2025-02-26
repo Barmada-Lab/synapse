@@ -198,8 +198,10 @@ services:
       - ANALYSIS_DIR=${ANALYSIS_DIR}
       - ACQUISITION_DIR=${ACQUISITION_DIR}
       - OVERLORD_DIR=${OVERLORD_DIR}
-      - PREFECT_API_KEY=${PREFECT_API_KEY}
-      - PREFECT_API_URL=${PREFECT_API_URL}
+      - PREFECT_API_KEY=${PREFECT_API_KEY?Variable not set}
+      - PREFECT_API_URL=${PREFECT_API_URL?Variable not set}
+      - GLOBUS_COMPUTE_CLIENT_ID=${GLOBUS_COMPUTE_CLIENT_ID?Variable not set}
+      - GLOBUS_COMPUTE_CLIENT_SECRET=${GLOBUS_COMPUTE_CLIENT_SECRET?Variable not set}
 
   frontend:
     image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
