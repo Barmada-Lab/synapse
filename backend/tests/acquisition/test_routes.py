@@ -4,7 +4,8 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.acquisition.crud import create_analysis_spec, implement_plan
+from app.acquisition.crud import create_analysis_spec
+from app.acquisition.flows.acquisition_planning import implement_plan
 from app.acquisition.models import (
     Acquisition,
     AcquisitionCreate,

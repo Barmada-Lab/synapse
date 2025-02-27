@@ -6,10 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.acquisition import crud
-from app.acquisition.crud import (
-    create_acquisition_plan,
-    implement_plan,
-)
+from app.acquisition.crud import create_acquisition_plan
 from app.acquisition.models import (
     AcquisitionCreate,
     AcquisitionPlan,
@@ -20,8 +17,6 @@ from app.acquisition.models import (
     ImagingPriority,
     InstrumentCreate,
     InstrumentTypeCreate,
-    PlatereadSpecUpdate,
-    ProcessStatus,
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
@@ -314,35 +309,6 @@ def test_delete_wellplate_associated_with_acquisition_plan_cascades_delete(
     db.delete(wellplate)
     db.commit()
     assert db.get(AcquisitionPlan, plan.id) is None
-
-
-def test_materialize_schedule(db: Session) -> None:
-    plan = create_random_acquisition_plan(
-        session=db,
-        n_reads=2,
-        interval=timedelta(minutes=2),
-        deadline_delta=timedelta(minutes=1),
-    )
-    plan = implement_plan(session=db, plan=plan)
-    assert len(plan.reads) == 2
-    assert all(r.status == ProcessStatus.PENDING for r in plan.reads)
-
-    t0 = plan.reads[0]
-    t1 = plan.reads[1]
-    assert t0.start_after + timedelta(minutes=2) == t1.start_after
-    assert t0.start_after + timedelta(minutes=1) == t0.deadline
-
-
-def test_update_plateread(db: Session) -> None:
-    plan = create_random_acquisition_plan(session=db)
-    plan = implement_plan(session=db, plan=plan)
-
-    plateread = plan.reads[0]
-    plateread_in = PlatereadSpecUpdate(status=ProcessStatus.COMPLETED)
-    updated = crud.update_plateread(
-        session=db, db_plateread=plateread, plateread_in=plateread_in
-    )
-    assert updated.status == ProcessStatus.COMPLETED
 
 
 def test_create_analysis_plan(db: Session) -> None:

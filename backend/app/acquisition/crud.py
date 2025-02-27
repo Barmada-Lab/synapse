@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta, timezone
-
 from sqlmodel import Session, select
 
 from .models import (
@@ -97,33 +95,6 @@ def create_acquisition_plan(
     session.commit()
     session.refresh(acquisition_plan)
     return acquisition_plan
-
-
-def implement_plan(*, session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
-    """
-    Implements a plan by creating PlatereadSpecs based on the plan's parameters and current time.
-
-    PlateReadSpecs are then scheduled for execution by the scheduler.
-    """
-    # not using the database clock here has the potential to cause issues
-    start_time = datetime.now(timezone.utc)
-    for i in range(plan.n_reads):
-        start_after = start_time + (i * plan.interval)
-        deadline = None
-        if plan.deadline_delta:
-            deadline = start_after + plan.deadline_delta
-        else:
-            deadline = start_after + timedelta(days=9999)
-        session.add(
-            PlatereadSpec(
-                start_after=start_after,
-                deadline=deadline,
-                acquisition_plan_id=plan.id,
-            )
-        )
-    session.commit()
-    session.refresh(plan)
-    return plan
 
 
 def update_plateread(

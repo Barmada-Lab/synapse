@@ -21,9 +21,6 @@ from app.core.config import settings
 
 OVERLORD_STRFMT = "%Y-%m-%d_%H-%M-%S"
 
-BATCHES_PATH = settings.OVERLORD_DIR / "Batches"
-KIOSK_PATH = BATCHES_PATH / "Staging"
-
 
 @task(cache_policy=NONE)
 def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
@@ -55,7 +52,7 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
     user_name = f"{plan.acquisition.name}_"
     parent_name = f"{xml_prefix}_{user_name}_{now_str}"
     batch_name = f"{parent_name}_READ{i:03d}"
-    batch_path = KIOSK_PATH / f"{batch_name}.xml"
+    batch_path = settings.OVERLORD_DIR / "Batches" / "Kiosk" / f"{batch_name}.xml"
 
     deadline = spec.deadline if spec.deadline else datetime(9999, 12, 31, 23, 59, 59)
 
@@ -111,6 +108,8 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
         db_plateread=spec,
         plateread_in=PlatereadSpecUpdate(status=ProcessStatus.SCHEDULED),
     )
+
+    return batch_path
 
 
 class OverlordParameter(BaseXmlModel):
