@@ -43,12 +43,13 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
         case _:
             raise ValueError(f"Invalid plate storage location: {plan.storage_location}")
 
-    i = sorted(spec.acquisition_plan.reads, key=lambda x: x.start_after).index(spec) + 1
+    sorted_tps = sorted(spec.acquisition_plan.reads, key=lambda x: x.start_after)
+    i = sorted_tps.index(spec) + 1
 
     # we use the user_name param to achieve unique batch names.
     # it needs an underscore at the end for some reason.
     # the corresponding xml field must be populated with the same value.
-    now_str = spec.start_after.strftime(OVERLORD_STRFMT)
+    now_str = to_local_tz(sorted_tps[0].start_after).strftime(OVERLORD_STRFMT)
     user_name = f"{plan.acquisition.name}_"
     parent_name = f"{xml_prefix}_{user_name}_{now_str}"
     batch_name = f"{parent_name}_READ{i:03d}"
@@ -57,6 +58,7 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
     deadline = spec.deadline if spec.deadline else datetime(9999, 12, 31, 23, 59, 59)
 
     batch = Batch(
+        created=sorted_tps[0].start_after,
         start_after=spec.start_after,
         batch_name=batch_name,
         user=user_name,
@@ -164,7 +166,7 @@ class LifoStackCollection(BaseXmlModel, tag="LifoStackCollection", skip_empty=Tr
 
 
 class Batch(BaseXmlModel):
-    created: "OverlordDatetime" = element(tag="Created", default_factory=datetime.now)
+    created: "OverlordDatetime" = element(tag="Created")
     start_after: "OverlordDatetime" = element(tag="StartAfter")
     added: str = element(tag="Added", default="0001-01-01_00-00-00")
     started: str = element(tag="Started", default="0001-01-01_00-00-00")
