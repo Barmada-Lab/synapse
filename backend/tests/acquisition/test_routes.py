@@ -21,6 +21,7 @@ from app.acquisition.models import (
     InstrumentTypeCreate,
     InstrumentTypeList,
     InstrumentTypeRecord,
+    ProcessStatus,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
 )
@@ -568,6 +569,27 @@ def test_update_plateread_no_change(
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["status"] == read.status.value
         mock.assert_not_called()
+
+
+def test_update_plateread_twice_completed(
+    pw_authenticated_client: TestClient, db: Session
+) -> None:
+    plan = create_random_acquisition_plan(session=db)
+    scheduled = implement_plan(session=db, plan=plan)
+    read = scheduled.reads[0]
+    with (
+        patch("app.acquisition.routes.notify_slack") as mock_notif,
+        patch("app.acquisition.routes.handle_plateread_status_update") as _mock,
+    ):
+        pw_authenticated_client.patch(
+            f"{settings.API_V1_STR}/platereads/{read.id}",
+            json={"status": ProcessStatus.COMPLETED.value},
+        )
+        pw_authenticated_client.patch(
+            f"{settings.API_V1_STR}/platereads/{read.id}",
+            json={"status": ProcessStatus.COMPLETED.value},
+        )
+        mock_notif.assert_called_once()
 
 
 def test_update_plateread_requires_authentication(

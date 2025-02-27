@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
-from prefect.blocks.notifications import SlackWebhook
 from sqlmodel import func, select
 
+from app.common.slack import notify_slack
 from app.core.deps import SessionDep
 from app.labware.models import Wellplate
 from app.users.deps import CurrentActiveUserDep
@@ -31,6 +31,7 @@ from .models import (
     PlatereadSpec,
     PlatereadSpecRecord,
     PlatereadSpecUpdate,
+    ProcessStatus,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
     SBatchAnalysisSpecRecord,
@@ -226,6 +227,14 @@ def update_plateread(
             status_code=status.HTTP_404_NOT_FOUND, detail="Plate-read not found"
         )
 
+    if (
+        plateread_db.status == ProcessStatus.COMPLETED
+        and plateread_in.status == ProcessStatus.COMPLETED
+    ):
+        notify_slack(  # type: ignore
+            "Overlord is repeating acquisitions. This is not good. Please investigate."
+        )
+
     status_updated = plateread_db.status != plateread_in.status
     crud.update_plateread(
         session=session, db_plateread=plateread_db, plateread_in=plateread_in
@@ -316,6 +325,5 @@ def delete_instrument(session: SessionDep, id: int) -> Response:
 @api_router.post("/alerts")
 def alert_overlord_error(alert: OverlordAlert) -> Response:
     # prefect was written by monkeys so these type definitions are completely fucked
-    slack_webhook = SlackWebhook.load("tmnl-slack-webhook")  # type: ignore
-    slack_webhook.notify(alert.message)  # type: ignore
+    notify_slack(alert.message)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
