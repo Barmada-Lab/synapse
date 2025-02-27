@@ -16,7 +16,7 @@ from app.acquisition.models import (
     PlatereadSpecUpdate,
     ProcessStatus,
 )
-from app.common.dt import local_now, to_local_tz
+from app.common.dt import to_local_tz
 from app.core.config import settings
 
 OVERLORD_STRFMT = "%Y-%m-%d_%H-%M-%S"
@@ -31,7 +31,6 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
     }
     storage_loc = storage_location_map[plan.storage_location]
 
-    now_str = local_now().strftime(OVERLORD_STRFMT)
     match plan.storage_location:
         case Location.CYTOMAT2:
             xml_prefix = "CQ1 With Live Cells "  # yes, the space is intentional....
@@ -44,11 +43,12 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
         case _:
             raise ValueError(f"Invalid plate storage location: {plan.storage_location}")
 
-    i = sorted(spec.acquisition_plan.reads, key=lambda x: x.deadline).index(spec) + 1
+    i = sorted(spec.acquisition_plan.reads, key=lambda x: x.start_after).index(spec) + 1
 
     # we use the user_name param to achieve unique batch names.
     # it needs an underscore at the end for some reason.
     # the corresponding xml field must be populated with the same value.
+    now_str = spec.start_after.strftime(OVERLORD_STRFMT)
     user_name = f"{plan.acquisition.name}_"
     parent_name = f"{xml_prefix}_{user_name}_{now_str}"
     batch_name = f"{parent_name}_READ{i:03d}"
@@ -56,9 +56,8 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
 
     deadline = spec.deadline if spec.deadline else datetime(9999, 12, 31, 23, 59, 59)
 
-    start_after = datetime.now()
     batch = Batch(
-        start_after=start_after,
+        start_after=spec.start_after,
         batch_name=batch_name,
         user=user_name,
         parent_batch_name=parent_name,
@@ -68,7 +67,7 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
                 ReadTime(
                     index=i,
                     interval=int(plan.interval.total_seconds() / 60),
-                    value=start_after,
+                    value=spec.start_after,
                 )
             ]
         ),
