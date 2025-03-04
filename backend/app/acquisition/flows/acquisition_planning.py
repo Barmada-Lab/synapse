@@ -10,7 +10,9 @@ from app.labware.models import Wellplate
 
 
 @task
-def implement_plan(session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
+def implement_plan(
+    session: Session, plan: AcquisitionPlan, start_time: datetime | None = None
+) -> AcquisitionPlan:
     """
     Implements a plan by creating PlatereadSpecs based on the plan's parameters and current time.
 
@@ -19,7 +21,9 @@ def implement_plan(session: Session, plan: AcquisitionPlan) -> AcquisitionPlan:
     logger = get_run_logger()
     logger.info(f"Implementing acquisition plan for {plan.acquisition.name}")
     # not using the database clock here has the potential to cause issues
-    start_time = datetime.now(timezone.utc)
+    if start_time is None:
+        start_time = datetime.now(timezone.utc)
+
     for i in range(plan.n_reads):
         start_after = start_time + (i * plan.interval)
         deadline = None
@@ -47,15 +51,18 @@ def schedule_reads(session: Session, plan: AcquisitionPlan):
 
 
 @flow
-def check_to_implement_plans(wellplate_id: int):
+def check_to_schedule_plans(wellplate_id: int):
     logger = get_run_logger()
     with get_db() as session:
-        logger.info(f"Checking to implement plans for wellplate {wellplate_id}")
+        logger.info(f"Checking to schedule plans for wellplate {wellplate_id}")
         wellplate = session.get(Wellplate, wellplate_id)
         if wellplate is None:
             raise ValueError(f"Wellplate {wellplate_id} not found")
 
         for plan in wellplate.acquisition_plans:
-            if plan.storage_location == wellplate.location and not any(plan.reads):
-                plan = implement_plan(session=session, plan=plan)
+            if plan.storage_location == wellplate.location and not plan.scheduled:
+                # The plan may have already been implemented, but not scheduled.
+                # Implemented plans will have reads associated with them
+                if not any(plan.reads):
+                    plan = implement_plan(session=session, plan=plan)
                 schedule_reads(session=session, plan=plan)

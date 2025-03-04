@@ -97,7 +97,7 @@ class RecordSheet[T: BaseModel](ABC):
 
         out_df = self.df.drop(columns=["error"])
         rows = [list(row) for row in out_df.itertuples(index=False)]
-        ws.append_rows(rows)
+        ws.append_rows(rows, value_input_option="USER_ENTERED")  # type: ignore
 
         errors = self.df["error"]
         error_idxs = np.where(errors.notna())[0]

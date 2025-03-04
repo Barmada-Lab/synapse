@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -7,6 +7,7 @@ from returns.result import Failure, Result, Success
 from sqlmodel import select
 
 from app.acquisition import crud as acq_crud
+from app.acquisition.flows.acquisition_planning import implement_plan
 from app.acquisition.models import (
     Acquisition,
     AcquisitionPlan,
@@ -25,6 +26,7 @@ class CreateAcquisitionPlanRecord(BaseModel):
     storage_location: Location
     storage_position: int | None
     n_reads: int
+    start_after: datetime | None
     interval_mins: int
     deadline_delta_mins: int | None
     protocol_name: str
@@ -40,6 +42,11 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
             )
             row["storage_position"] = (
                 int(row["storage_position"]) if row["storage_position"] else None
+            )
+            row["start_after"] = (
+                datetime.fromisoformat(row["start_after"])
+                if row["start_after"]
+                else None
             )
             record = CreateAcquisitionPlanRecord.model_validate(row)
             return Success(record)
@@ -89,7 +96,7 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
         )
 
         try:
-            acq_crud.create_acquisition_plan(
+            acquisition_plan = acq_crud.create_acquisition_plan(
                 session=self.session,
                 plan_create=AcquisitionPlanCreate(
                     acquisition_id=acquisition.id,
@@ -103,6 +110,12 @@ class CreateAcquisitionPlanSheet(RecordSheet[CreateAcquisitionPlanRecord]):
                     priority=priority,
                 ),
             )
+            if record.start_after is not None:
+                implement_plan(
+                    session=self.session,
+                    plan=acquisition_plan,
+                    start_time=record.start_after,
+                )
             return Success(None)
         except Exception as e:
             return Failure(RowError(row=record.model_dump(), message=str(e)))

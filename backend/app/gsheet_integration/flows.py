@@ -12,6 +12,7 @@ from .acquisition_plans import AcquisitionPlanSheet, CreateAcquisitionPlanSheet
 from .acquisitions import AcquisitionSheet, ArchiveSheet, CreateAcquisitionSheet
 from .analysis_plans import AnalysisPlanSheet, CreateAnalysisPlanSheet
 from .print_barcodes import PrintBarcodesSheet
+from .reads import ReadsSheet
 
 
 def get_imaging_spreadsheet() -> gspread.Spreadsheet:
@@ -60,6 +61,11 @@ def sync_google_sheets():
         acquisition_plan_sheet = AcquisitionPlanSheet(acquisition_plan_ws, session)
         acquisition_plan_sheet.process_sheet()
         acquisition_plan_sheet.render(acquisition_plan_ws)
+
+        schedule_ws = spread.worksheet("simulated_schedule")
+        schedule_sheet = ReadsSheet(schedule_ws, session)
+        schedule_sheet.process_sheet()
+        schedule_sheet.render(schedule_ws)
 
         create_analysis_ws = spread.worksheet("create_analysis_plan")
         create_analysis_sheet = CreateAnalysisPlanSheet(create_analysis_ws, session)

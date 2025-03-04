@@ -318,6 +318,13 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         back_populates="acquisition_plan",
     )
 
+    @computed_field  # type: ignore
+    @property
+    def scheduled(self) -> bool:
+        # I'd use all(), but all([]) == True and any([]) == False <):^)
+        # Anyways, we don't really do "partial" scheduling, so 'any' should imply 'all.'
+        return any(read.status == ProcessStatus.SCHEDULED for read in self.reads)
+
 
 class AcquisitionPlanRecord(AcquisitionPlanBase):
     id: int
