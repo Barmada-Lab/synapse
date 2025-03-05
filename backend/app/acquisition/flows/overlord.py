@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Annotated, Literal
 from xml.etree.ElementTree import canonicalize
 
 from prefect import task
 from prefect.cache_policies import NONE
-from pydantic import PlainSerializer
+from pydantic import BaseModel, PlainSerializer
 from pydantic.dataclasses import dataclass
 from pydantic_xml import BaseXmlModel, attr, element
 from sqlmodel import Session
@@ -22,16 +23,52 @@ from app.core.config import settings
 OVERLORD_STRFMT = "%Y-%m-%d_%H-%M-%S"
 
 
+class BatchParams(BaseModel):
+    storage_location: Location
+    read_idx: int
+    created: datetime
+    start_after: datetime
+    interval: timedelta
+    acquisition_name: str
+    wellplate_name: str
+    protocol_name: str
+    kiosk_path: Path
+    storage_position: int | None
+    plateread_id: int | None
+
+
 @task(cache_policy=NONE)
 def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
-    plan = spec.acquisition_plan
-    storage_location_map = {
-        Location.CYTOMAT2: "C2",
-        Location.HOTEL: "Plate Hotel",
-    }
-    storage_loc = storage_location_map[plan.storage_location]
+    sorted_tps = sorted(spec.acquisition_plan.reads, key=lambda x: x.start_after)
+    read_idx = sorted_tps.index(spec) + 1
 
-    match plan.storage_location:
+    batch_path = write_batch_xml(
+        BatchParams(
+            storage_location=spec.acquisition_plan.storage_location,
+            read_idx=read_idx,
+            created=sorted_tps[0].start_after,
+            start_after=spec.start_after,
+            interval=spec.acquisition_plan.interval,
+            acquisition_name=spec.acquisition_plan.acquisition.name,
+            wellplate_name=spec.acquisition_plan.wellplate.name,
+            storage_position=spec.acquisition_plan.storage_position,
+            plateread_id=spec.id,  # type: ignore
+            protocol_name=spec.acquisition_plan.protocol_name,
+            kiosk_path=settings.OVERLORD_DIR / "Batches" / "Kiosk",
+        )
+    )
+
+    crud.update_plateread(
+        session=session,
+        db_plateread=spec,
+        plateread_in=PlatereadSpecUpdate(status=ProcessStatus.SCHEDULED),
+    )
+
+    return batch_path
+
+
+def write_batch_xml(params: BatchParams):
+    match params.storage_location:
         case Location.CYTOMAT2:
             xml_prefix = "CQ1 With Live Cells "  # yes, the space is intentional....
             storage_loc = "C2"
@@ -40,26 +77,23 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
             xml_prefix = "Run Mode 2"
             storage_loc = "Plate Hotel"
             run_mode = 2
-        case _:
-            raise ValueError(f"Invalid plate storage location: {plan.storage_location}")
-
-    sorted_tps = sorted(spec.acquisition_plan.reads, key=lambda x: x.start_after)
-    i = sorted_tps.index(spec) + 1
+        case other:
+            raise ValueError(f"Invalid plate storage location: {other}")
 
     # we use the user_name param to achieve unique batch names.
     # it needs an underscore at the end for some reason.
     # the corresponding xml field must be populated with the same value.
-    now_str = to_local_tz(sorted_tps[0].start_after).strftime(OVERLORD_STRFMT)
-    user_name = f"{plan.acquisition.name}_"
+    now_str = to_local_tz(params.created).strftime(OVERLORD_STRFMT)
+    user_name = f"{params.acquisition_name}_"
     parent_name = f"{xml_prefix}_{user_name}_{now_str}"
-    batch_name = f"{parent_name}_READ{i:03d}"
-    batch_path = settings.OVERLORD_DIR / "Batches" / "Kiosk" / f"{batch_name}.xml"
+    batch_name = f"{parent_name}_READ{params.read_idx:03d}"
+    batch_path = params.kiosk_path / f"{batch_name}.xml"
 
-    deadline = spec.deadline if spec.deadline else datetime(9999, 12, 31, 23, 59, 59)
+    deadline = datetime(9999, 12, 31, 23, 59, 59)
 
     batch = Batch(
-        created=sorted_tps[0].start_after,
-        start_after=spec.start_after,
+        created=params.created,
+        start_after=params.start_after,
         batch_name=batch_name,
         user=user_name,
         parent_batch_name=parent_name,
@@ -67,9 +101,9 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
         read_times=ReadTimeCollection(
             items=[
                 ReadTime(
-                    index=i,
-                    interval=int(plan.interval.total_seconds() / 60),
-                    value=spec.start_after,
+                    index=params.read_idx,
+                    interval=int(params.interval.total_seconds() / 60),
+                    value=params.start_after,
                 )
             ]
         ),
@@ -78,24 +112,24 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
                 Labware(
                     index=1,
                     type="96",
-                    barcode=plan.wellplate.name,
+                    barcode=params.wellplate_name,
                     start_location=storage_loc,
                     end_location=storage_loc,
                 )
             ]
         ),
         parameters=OverlordBatchParams(
-            wellplate_barcode=plan.wellplate.name,
-            wellplate_storage_position=plan.storage_position
-            if plan.storage_position is not None
+            wellplate_barcode=params.wellplate_name,
+            wellplate_storage_position=params.storage_position
+            if params.storage_position is not None
             else -1,
-            plateread_id=spec.id,  # type: ignore
-            acquisition_name=plan.acquisition.name,
+            plateread_id=params.plateread_id or -1,
+            acquisition_name=params.acquisition_name,
             labware_type="96",
             plate_location_start=storage_loc,
             scans_per_plate=1,
-            scan_time_interval=int(plan.interval.total_seconds()),
-            cq1_protocol_name=plan.protocol_name,
+            scan_time_interval=int(params.interval.total_seconds()),
+            cq1_protocol_name=params.protocol_name,
             plate_estimated_time=1337,
             deadline=deadline,
         ).to_parameter_collection(),
@@ -103,12 +137,6 @@ def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
 
     with open(batch_path, "w") as f:
         canonicalize(batch.to_xml(), out=f)
-
-    crud.update_plateread(
-        session=session,
-        db_plateread=spec,
-        plateread_in=PlatereadSpecUpdate(status=ProcessStatus.SCHEDULED),
-    )
 
     return batch_path
 
