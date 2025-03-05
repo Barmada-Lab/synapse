@@ -325,6 +325,13 @@ class AcquisitionPlan(AcquisitionPlanBase, table=True):
         # Anyways, we don't really do "partial" scheduling, so 'any' should imply 'all.'
         return any(read.status == ProcessStatus.SCHEDULED for read in self.reads)
 
+    @computed_field  # type: ignore
+    @property
+    def completed(self) -> bool:
+        return len(self.reads) > 0 and all(
+            read.status.is_endstate for read in self.reads
+        )
+
 
 class AcquisitionPlanRecord(AcquisitionPlanBase):
     id: int

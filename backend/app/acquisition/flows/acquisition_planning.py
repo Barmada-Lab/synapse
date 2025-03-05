@@ -44,7 +44,7 @@ def implement_plan(
 
 
 @task
-def schedule_reads(session: Session, plan: AcquisitionPlan):
+def schedule_unscheduled_reads(session: Session, plan: AcquisitionPlan):
     unscheduled_reads = [r for r in plan.reads if r.status == ProcessStatus.PENDING]
     for read in unscheduled_reads:
         submit_plateread_spec(session=session, spec=read)
@@ -60,9 +60,13 @@ def check_to_schedule_plans(wellplate_id: int):
             raise ValueError(f"Wellplate {wellplate_id} not found")
 
         for plan in wellplate.acquisition_plans:
-            if plan.storage_location == wellplate.location and not plan.scheduled:
+            if (
+                plan.storage_location == wellplate.location
+                and not plan.scheduled
+                and not plan.completed
+            ):
                 # The plan may have already been implemented, but not scheduled.
                 # Implemented plans will have reads associated with them
                 if not any(plan.reads):
                     plan = implement_plan(session=session, plan=plan)
-                schedule_reads(session=session, plan=plan)
+                schedule_unscheduled_reads(session=session, plan=plan)

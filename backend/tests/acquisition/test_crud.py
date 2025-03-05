@@ -6,7 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.acquisition import crud
-from app.acquisition.crud import create_acquisition_plan
+from app.acquisition.crud import create_acquisition_plan, update_plateread
+from app.acquisition.flows.acquisition_planning import implement_plan
 from app.acquisition.models import (
     AcquisitionCreate,
     AcquisitionPlan,
@@ -17,12 +18,15 @@ from app.acquisition.models import (
     ImagingPriority,
     InstrumentCreate,
     InstrumentTypeCreate,
+    PlatereadSpecUpdate,
+    ProcessStatus,
     Repository,
     SBatchAnalysisSpec,
     SBatchAnalysisSpecCreate,
 )
 from app.labware.models import Location, Wellplate
 from tests.acquisition.utils import (
+    complete_reads,
     create_random_acquisition,
     create_random_acquisition_plan,
     create_random_analysis_spec,
@@ -183,6 +187,69 @@ def test_create_acquisition_plan(db: Session) -> None:
     assert record.interval == interval
     assert record.priority == priority
     assert record.reads == []
+
+
+def test_acquisition_plan_with_no_reads_is_not_scheduled(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db, n_reads=1)
+    assert plan.reads == []
+    assert plan.scheduled is False
+
+
+def test_acquisition_plan_with_pending_reads_is_not_scheduled(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db, n_reads=1)
+    implement_plan(session=db, plan=plan)
+    assert plan.reads[0].status == ProcessStatus.PENDING
+    assert plan.scheduled is False
+
+
+def test_acquisition_plan_with_scheduled_reads_is_scheduled(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db, n_reads=1)
+    implement_plan(session=db, plan=plan)
+    plateread = plan.reads[0]
+    plateread_in = PlatereadSpecUpdate(status=ProcessStatus.SCHEDULED)
+    update_plateread(session=db, db_plateread=plateread, plateread_in=plateread_in)
+    assert plan.reads[0].status == ProcessStatus.SCHEDULED
+    assert plan.scheduled
+
+
+def test_acquisition_plan_with_all_endstate_reads_is_not_scheduled(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db, n_reads=1)
+    implement_plan(session=db, plan=plan)
+    complete_reads(session=db, acquisition_plan=plan)
+    assert plan.completed
+    assert plan.scheduled is False
+
+
+def test_acquisition_plan_with_all_endstate_reads_is_completed(db: Session) -> None:
+    endstates = list(filter(lambda s: s.is_endstate, ProcessStatus))
+    plan = create_random_acquisition_plan(session=db, n_reads=len(endstates))
+    implement_plan(session=db, plan=plan)
+    for read, state in zip(plan.reads, endstates, strict=True):
+        update_plateread(
+            session=db,
+            db_plateread=read,
+            plateread_in=PlatereadSpecUpdate(status=state),
+        )
+    assert plan.completed
+
+
+def test_acquisition_plan_unimplemented_is_not_completed(db: Session) -> None:
+    plan = create_random_acquisition_plan(session=db, n_reads=1)
+    assert not plan.completed
+
+
+def test_acquisition_plan_with_not_all_endstate_reads_is_not_completed(
+    db: Session,
+) -> None:
+    plan = create_random_acquisition_plan(session=db, n_reads=2)
+    implement_plan(session=db, plan=plan)
+    complete_reads(session=db, acquisition_plan=plan)
+    update_plateread(
+        session=db,
+        db_plateread=plan.reads[0],
+        plateread_in=PlatereadSpecUpdate(status=ProcessStatus.RUNNING),
+    )
+    assert not plan.completed
 
 
 def test_create_acquisition_plan_with_long_name_fails(db: Session) -> None:

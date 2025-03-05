@@ -8,12 +8,13 @@ from app.acquisition import crud
 from app.acquisition.flows.acquisition_planning import (
     check_to_schedule_plans,
     implement_plan,
-    schedule_reads,
+    schedule_unscheduled_reads,
 )
 from app.acquisition.models import PlatereadSpecUpdate, ProcessStatus
 from app.labware import crud as labware_crud
 from app.labware.models import Location, WellplateUpdate
 from tests.acquisition.utils import (
+    complete_reads,
     create_random_acquisition_plan,
 )
 
@@ -53,7 +54,7 @@ def test_schedule_reads(db: Session) -> None:
     with patch(
         "app.acquisition.flows.acquisition_planning.submit_plateread_spec"
     ) as mock_submit_plateread_spec:
-        schedule_reads(session=db, plan=plan)
+        schedule_unscheduled_reads(session=db, plan=plan)
         assert mock_submit_plateread_spec.call_count == 2
 
 
@@ -71,8 +72,28 @@ def test_schedule_reads_already_implemented(db: Session) -> None:
             "app.acquisition.flows.acquisition_planning.implement_plan"
         ) as mock_implement_plan,
     ):
-        schedule_reads(session=db, plan=plan)
+        schedule_unscheduled_reads(session=db, plan=plan)
         mock_submit_plateread_spec.assert_called_once()
+        mock_implement_plan.assert_not_called()
+
+
+def test_schedule_reads_already_completed(db: Session) -> None:
+    """already completed plans are not re-implemented or scheduled"""
+    plan = create_random_acquisition_plan(
+        session=db, storage_location=Location.CYTOMAT2, n_reads=1
+    )
+    implement_plan(session=db, plan=plan)
+    complete_reads(session=db, acquisition_plan=plan)
+    with (
+        patch(
+            "app.acquisition.flows.acquisition_planning.submit_plateread_spec"
+        ) as mock_submit_plateread_spec,
+        patch(
+            "app.acquisition.flows.acquisition_planning.implement_plan"
+        ) as mock_implement_plan,
+    ):
+        schedule_unscheduled_reads(session=db, plan=plan)
+        mock_submit_plateread_spec.assert_not_called()
         mock_implement_plan.assert_not_called()
 
 
@@ -90,7 +111,7 @@ def test_schedule_reads_not_pending(db: Session) -> None:
     with patch(
         "app.acquisition.flows.acquisition_planning.submit_plateread_spec"
     ) as mock_submit_plateread_spec:
-        schedule_reads(session=db, plan=plan)
+        schedule_unscheduled_reads(session=db, plan=plan)
         assert mock_submit_plateread_spec.call_count == 1
 
 

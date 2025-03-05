@@ -173,7 +173,8 @@ def handle_analyses(acquisition: Acquisition, session: Session):
             read.status.is_endstate for read in acquisition.acquisition_plan.reads
         )
         total_reads = acquisition.acquisition_plan.n_reads
-        handle_post_read_analyses(n_complete, acquisition, session)
+        if n_complete > 0:
+            handle_post_read_analyses(n_complete, acquisition, session)
         if n_end_states == total_reads:
             handle_end_of_run_analyses(acquisition, session)
 
