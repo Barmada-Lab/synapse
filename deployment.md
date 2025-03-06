@@ -21,7 +21,7 @@ Components of synapse are structured around our deployment environment at the Un
 
 Before deployment, we must configure the required volumes (see [docker-compose.yml](./docker-compose.yml) for volumes marked external: true.)
 
-First, ensure that your volumes are all mounted via fstab.
+First, ensure that the volumes are all mounted via fstab.
 
 Then, to create a local bind-mount-backed volume:
 ```bash
@@ -35,6 +35,25 @@ docker volume create --driver local \
 replace /path_to/local_mount and VOLUME_NAME with the appropriate values for each of the specified external volumes in docker-compose.yml.
 
 The rationale behind using bind mounts is simple. We had to use a bind mount to mount our archive which we access using sshfs, so we chose to mount our other drives the same way for consistency. To ensure there's no possibility of writing to an unmounted mount point, make sure you each mountpoint is immutable by running `sudo chattr +i /path_to/local_mount` for each mount point, after ensuring the mount point is unmounted.
+
+## Database backups
+
+You will find a script called backup.sh in scripts/. It generates compressed backups of synapse's postgres database. You should schedule this script to run regularly, ideally writing to an offsite filesystem. I use a cronjob to write backups to our archive filesystem every day at midnight. An example crontab looks like:
+
+
+```bash
+MAILTO=your_uniqname@umich.edu
+# m h  dom mon dow   command
+0 0 * * * /path/to/synapse/scripts/backup.sh /nfs/archive/synapse_backups
+```
+
+
+To restore a backup, all you need to do is navigate to the synapse base directory and run:
+
+```bash
+scripts/restore.sh /path/to/your/backup.zst
+```
+
 
 ## Public Traefik
 
