@@ -98,6 +98,25 @@ def run_analyses(csv_path: Path):
             submit_sbatch_job(sbatch_args, executor)
 
 
+@app.command()
+def sync_and_analyze_jobs(csv_path: Path):
+    df = pd.read_csv(csv_path).fillna("")
+    orig = settings.ACQUISITION_DIR
+    dest = settings.ANALYSIS_DIR
+    for _, row in df.iterrows():
+        acquisition_name = row["acquisition_name"]
+        if not (orig / acquisition_name).exists():
+            print(f"Acquisition {acquisition_name} not found")
+            continue
+        print(f"Syncing {acquisition_name} to {dest}")
+        _sync_cmd(orig / acquisition_name, dest)
+
+        with Executor(endpoint_id=settings.GLOBUS_ENDPOINT_ID) as executor:
+            sbatch_args = [row["analysis_cmd"], *row["analysis_args"].split(",")]
+            print(f"Submitting {sbatch_args} to the cluster")
+            submit_sbatch_job(sbatch_args, executor)
+
+
 @app.command(hidden=True)
 def dummy():
     print(":D")
