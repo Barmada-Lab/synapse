@@ -30,6 +30,8 @@ dependencies = [
     "pandas>=2.2.3",
     "fastapi-events>=0.12.2",
     "globus-compute-sdk>=3.0.1",
+    "tifffile>=2025.3.30",
+    "imagecodecs>=2025.3.30",
 ]
 
 [project.scripts]
