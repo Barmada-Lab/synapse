@@ -105,7 +105,7 @@ requires-dist = [
     { name = "emails", specifier = ">=0.6,<1.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.114.2,<1.0.0" },
     { name = "fastapi-events", specifier = ">=0.12.2" },
-    { name = "globus-compute-sdk", specifier = ">=3.0.1" },
+    { name = "globus-compute-sdk", specifier = "==3.4.0" },
     { name = "gspread", specifier = ">=6.1.4" },
     { name = "gspread-formatting", specifier = ">=1.2.0" },
     { name = "httpx", specifier = ">=0.25.1,<1.0.0" },
@@ -645,7 +645,7 @@ wheels = [
 
 [[package]]
 name = "globus-compute-sdk"
-version = "3.0.1"
+version = "3.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama" },
@@ -660,23 +660,23 @@ dependencies = [
     { name = "tblib" },
     { name = "texttable" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dc/cc/a5555fb07148f9fb48f4667928f4d6fe2074ba7f74b7460b472db87cb05b/globus_compute_sdk-3.0.1.tar.gz", hash = "sha256:afd421312f9400f618c920a91d9404d1c531bc8c28d498fa89194ecdf78d88ad", size = 62947 }
+sdist = { url = "https://files.pythonhosted.org/packages/21/fe/9af87c73e752c773253c7dbb160fc3b4510c19679fee3fbc8274e62300a5/globus_compute_sdk-3.4.0.tar.gz", hash = "sha256:0efe49d0c3169c48565895882e01a55f15287173c2a59e6e2888daa540c8333e", size = 66475 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/ed/39217264164efb2a1c1dc74238bd88072c7cce203b06685c1e15556d84d2/globus_compute_sdk-3.0.1-py3-none-any.whl", hash = "sha256:44232b5207215c9238d9dc2526d56c906439e7916b62d19d38ce6f7d0beb1b04", size = 75151 },
+    { url = "https://files.pythonhosted.org/packages/78/13/e4ff07d61d90d3414baa67f1cd6111e33d095d175474cf1c6dd444fa01c3/globus_compute_sdk-3.4.0-py3-none-any.whl", hash = "sha256:a079c61c4c778011dace4678c8bc1a7322e9b4bb9d76acb9347e2e4e1ca5977c", size = 78887 },
 ]
 
 [[package]]
 name = "globus-sdk"
-version = "3.50.0"
+version = "3.53.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/80/3c8e5d3572fc3c7dcc931546f67fe562abed200888b46faa56b997acca22/globus_sdk-3.50.0.tar.gz", hash = "sha256:758e638cd28f13c310d97ee5b30605496b3ca5d83f048d2bc1bbcbe4527c29c5", size = 259492 }
+sdist = { url = "https://files.pythonhosted.org/packages/85/2d/217a460102184284f90b22242ca876655503d0b88bf2bac90307721020d7/globus_sdk-3.53.0.tar.gz", hash = "sha256:502cf6f2fac3d8f2ee1f0270db07307adb0b928f367dad522c3ec5ac90b5acec", size = 267349 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/71/e0b5df945061a8f9456173630aeb7119670b5972a07f0cb95ac9c4cf54d7/globus_sdk-3.50.0-py3-none-any.whl", hash = "sha256:6bdd4214d19b5b3f7ebf1b0bdf8e0b4933c7e22ab43753af0f1bea144cc5c85d", size = 392826 },
+    { url = "https://files.pythonhosted.org/packages/fd/2c/2e9f00f2a8471be5d7ae0711ad9e853cfafa78a24adb2e4103320707bf03/globus_sdk-3.53.0-py3-none-any.whl", hash = "sha256:096876d54eb28d374106b860c730af23f077a37dcf5ba9dea30e1aa6754245fe", size = 406864 },
 ]
 
 [[package]]
