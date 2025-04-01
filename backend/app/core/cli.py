@@ -11,8 +11,21 @@ from app.acquisition.flows.artifact_collections import _sync_cmd
 from app.acquisition.flows.overlord import BatchParams, write_batch_xml
 from app.acquisition.models import Location
 from app.core.config import settings
+from app.labware.flows import print_wellplate_barcode
 
 app = Typer()
+
+
+@app.command(
+    help=(
+        "Print wellplate barcodes given a CSV file conforming to the"
+        "create_acquisition_plan format"
+    )
+)
+def print_barcodes(csv_path: Path):
+    df = pd.read_csv(csv_path).fillna("")
+    for _, row in df.iterrows():
+        print_wellplate_barcode(row["wellplate_name"])
 
 
 def _parse_batch_params(
