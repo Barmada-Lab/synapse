@@ -18,7 +18,7 @@ app = Typer()
 
 @app.command(
     help=(
-        "Print wellplate barcodes given a CSV file conforming to the"
+        "Print wellplate barcodes given a CSV file conforming to the "
         "create_acquisition_plan format"
     )
 )
@@ -65,7 +65,7 @@ def _parse_batch_params(
 
 @app.command(
     help=(
-        "Dump Overlord XML files given a CSV conforming to the"
+        "Dump Overlord XML files given a CSV conforming to the "
         "create_acquisition_plan format"
     )
 )
@@ -78,11 +78,11 @@ def dump_xmls(csv_path: Path, output_dir: Path = Path(".")):
 
 @app.command(
     help=(
-        "Sync acquisitions to the configured ANALYSIS_DIR, given a CSV file"
+        "Sync acquisitions to the configured ANALYSIS_DIR, given a CSV file "
         "conforming to the create_analysis_plan format"
     )
 )
-def sync_experiments(csv_path: Path):
+def sync_acquisitions(csv_path: Path):
     df = pd.read_csv(csv_path).fillna("")
     orig = settings.ACQUISITION_DIR
     dest = settings.ANALYSIS_DIR
@@ -97,8 +97,8 @@ def sync_experiments(csv_path: Path):
 
 @app.command(
     help=(
-        "Run analyses on the cluster given a CSV file conforming to the"
-        "create_analysis_plan format. Requires the experiment to be present in"
+        "Run analyses on the cluster given a CSV file conforming to the "
+        "create_analysis_plan format. Requires the experiment to be present in "
         "ANALYSIS_DIR first."
     )
 )
@@ -111,8 +111,10 @@ def run_analyses(csv_path: Path):
             submit_sbatch_job(sbatch_args, executor)
 
 
-@app.command()
-def sync_and_analyze_jobs(csv_path: Path):
+@app.command(
+    help=("Syncs and analyzes each row in a create_analysis_plan-formatted CSV file")
+)
+def sync_and_analyze(csv_path: Path):
     df = pd.read_csv(csv_path).fillna("")
     orig = settings.ACQUISITION_DIR
     dest = settings.ANALYSIS_DIR
