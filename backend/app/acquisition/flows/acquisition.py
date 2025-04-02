@@ -1,5 +1,4 @@
 import logging
-import os
 
 import tifffile
 from prefect import flow, task
@@ -11,6 +10,7 @@ from app.acquisition.flows.artifact_collections import (
     copy_collection,
     move_collection,
 )
+from app.acquisition.flows.fiftyone import populate_fiftyone_dataset
 from app.acquisition.models import (
     ArtifactCollection,
     ArtifactCollectionCreate,
@@ -18,6 +18,7 @@ from app.acquisition.models import (
     PlatereadSpec,
     Repository,
 )
+from app.core.config import settings
 from app.core.deps import get_db
 
 logger = logging.getLogger(__name__)
@@ -25,16 +26,17 @@ logger = logging.getLogger(__name__)
 
 @task
 def compress_cq1_acquisition(acquisition_collection: ArtifactCollection):
-    for file in acquisition_collection.path.glob("*/Projection/*.tif"):
+    pattern = "*/Projection/*[!.tmp].tif"
+    for file in acquisition_collection.path.glob(pattern):
         with TiffFile(file) as tif:
-            if tif.pages[0].compression != COMPRESSION.NONE:
-                # we've already compressed this tiff!
+            is_compressed = tif.pages[0].compression != COMPRESSION.NONE
+            if is_compressed:
                 continue
             data = tif.asarray()
 
-        temp_file = file.with_suffix(".compressed.tif")
-        tifffile.imwrite(temp_file, data, compression=COMPRESSION.ZSTD)
-        os.rename(temp_file, file)
+        tmp_file = file.with_suffix(".tmp.tif")
+        tifffile.imwrite(tmp_file, data, compression=COMPRESSION.ZSTD)
+        tmp_file.replace(file)
 
 
 @flow
@@ -62,6 +64,9 @@ def on_plateread_completed(plateread_id: int):
             )
 
         compress_cq1_acquisition(acquisition_collection)
+
+        if settings.CREATE_FIFTYONE_DATASETS:
+            populate_fiftyone_dataset(acquisition.name, acquisition_collection.path)
 
         copy_collection(
             collection=acquisition_collection,

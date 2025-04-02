@@ -124,6 +124,7 @@ class Settings(BaseSettings):
     ANALYSIS_DIR: DirectoryPath = Path("/tmp")
     ACQUISITION_DIR: DirectoryPath = Path("/tmp")
     OVERLORD_DIR: DirectoryPath = Path("/tmp")
+    FIFTYONE_DIR: DirectoryPath = Path("/fiftyone")
 
     def _check_default_path(self, var_name: str, value: DirectoryPath) -> None:
         if value == Path("/tmp"):
@@ -143,6 +144,7 @@ class Settings(BaseSettings):
         self._check_default_path("ANALYSIS_DIR", self.ANALYSIS_DIR)
         self._check_default_path("ACQUISITION_DIR", self.ACQUISITION_DIR)
         self._check_default_path("OVERLORD_DIR", self.OVERLORD_DIR)
+        self._check_default_path("FIFTYONE_DIR", self.FIFTYONE_DIR)
         return self
 
     ZPL_PRINTER_HOST: str
@@ -155,6 +157,8 @@ class Settings(BaseSettings):
 
     GLOBUS_ENDPOINT_ID: str = ""
     GLOBUS_ENDPOINT_CWD: Path = Path("/tmp")
+
+    CREATE_FIFTYONE_DATASETS: bool = False
 
 
 settings = Settings()  # type: ignore

@@ -64,6 +64,7 @@ services:
       - app-analysis-data:${ANALYSIS_DIR}
       - app-acquisition-data:${ACQUISITION_DIR}
       - app-overlord-data:${OVERLORD_DIR}
+      - fiftyone-data:/fiftyone
     environment:
       - DOMAIN=${DOMAIN}
       - FRONTEND_HOST=${FRONTEND_HOST?Variable not set}
@@ -94,6 +95,7 @@ services:
       - app-analysis-data:${ANALYSIS_DIR}
       - app-acquisition-data:${ACQUISITION_DIR}
       - app-overlord-data:${OVERLORD_DIR}
+      - fiftyone-data:/fiftyone
     depends_on:
       db:
         condition: service_healthy
@@ -126,6 +128,8 @@ services:
       - OVERLORD_DIR=${OVERLORD_DIR}
       - PREFECT_API_KEY=${PREFECT_API_KEY}
       - PREFECT_API_URL=${PREFECT_API_URL}
+      - CYTOMANCER_FO_CACHE=/fiftyone
+      - CYTOMANCER_DASK_N_WORKERS=1
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
@@ -170,8 +174,12 @@ services:
       - app-analysis-data:${ANALYSIS_DIR}
       - app-acquisition-data:${ACQUISITION_DIR}
       - app-overlord-data:${OVERLORD_DIR}
+      - fiftyone-data:/fiftyone
     depends_on:
       db:
+        condition: service_healthy
+        restart: true
+      fiftyone-db:
         condition: service_healthy
         restart: true
     env_file:
@@ -202,7 +210,7 @@ services:
       - PREFECT_API_URL=${PREFECT_API_URL?Variable not set}
       - GLOBUS_COMPUTE_CLIENT_ID=${GLOBUS_COMPUTE_CLIENT_ID?Variable not set}
       - GLOBUS_COMPUTE_CLIENT_SECRET=${GLOBUS_COMPUTE_CLIENT_SECRET?Variable not set}
-
+      - FIFTYONE_DATABASE_URI=mongodb://fiftyone-db:27017/fiftyone
   frontend:
     image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
     restart: always
@@ -232,6 +240,33 @@ services:
       # Enable redirection for HTTP and HTTPS
       - traefik.http.routers.${STACK_NAME?Variable not set}-frontend-http.middlewares=https-redirect
 
+  fiftyone-db:
+    image: mongo
+    healthcheck:
+      test: ['CMD-SHELL', 'mongosh', '--eval', 'db.runCommand("ping")']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fiftyone:
+    command: ["python", "-m", "fiftyone.server.main", "--port", "5151"]
+    image: voxel51/fiftyone:latest
+    networks:
+      - traefik-public
+      - default
+    depends_on:
+      fiftyone-db:
+        condition: service_healthy
+        restart: true
+    ports:
+      - 5151:5151
+    env_file:
+      - .env
+    environment:
+      - FIFTYONE_DEFAULT_APP_ADDRESS=0.0.0.0
+      - FIFTYONE_DATABASE_URI=mongodb://fiftyone-db:27017/fiftyone
+    volumes:
+      - fiftyone-data:/fiftyone
 
 volumes:
   app-db-data:
@@ -242,6 +277,8 @@ volumes:
   app-acquisition-data:
     external: true
   app-overlord-data:
+    external: true
+  fiftyone-data:
     external: true
 
 

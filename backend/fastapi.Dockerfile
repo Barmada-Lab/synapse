@@ -13,11 +13,13 @@ RUN apt-get update && \
 
 ENV PYTHONUNBUFFERED=1
 
+
 WORKDIR /app/
 
 # Install uv
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
 COPY --from=ghcr.io/astral-sh/uv:0.4.15 /uv /bin/uv
+
 
 # Place executables in the environment at the front of the path
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#using-the-environment
@@ -34,6 +36,11 @@ ENV UV_LINK_MODE=copy
 # Disable host key checking and hope we don't get MITM'd
 RUN --mount=type=ssh,required=true \
     mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv tool install git+https://github.com/Barmada-Lab/cytomancer.git@v1.3.33
+
+ENV PATH="/root/.local/bin:$PATH"
 
 # Install dependencies
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
@@ -56,5 +63,6 @@ COPY ./app /app/app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=ssh,required=true \
     uv sync
+
 
 CMD ["fastapi", "run", "--workers", "4", "app/main.py"]

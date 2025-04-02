@@ -30,6 +30,8 @@ dependencies = [
     "pandas>=2.2.3",
     "fastapi-events>=0.12.2",
     "globus-compute-sdk==3.4.0",
+    "acquisition-io[cq1]",
+    "fiftyone>=1.4.0",
     "tifffile>=2025.3.30",
     "imagecodecs>=2025.3.30",
 ]
@@ -52,6 +54,7 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
+acquisition-io = { git = "https://github.com/Barmada-Lab/acquisition-io", rev = "v0.1.2" }
 
 [build-system]
 requires = ["hatchling"]
