@@ -54,7 +54,7 @@ dev-dependencies = [
 ]
 
 [tool.uv.sources]
-acquisition-io = { git = "https://github.com/Barmada-Lab/acquisition-io", rev = "v0.1.2" }
+acquisition-io = { git = "https://github.com/Barmada-Lab/acquisition-io", rev = "v0.1.4" }
 
 [build-system]
 requires = ["hatchling"]
