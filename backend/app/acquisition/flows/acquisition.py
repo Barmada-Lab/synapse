@@ -10,7 +10,7 @@ from app.acquisition.flows.artifact_collections import (
     copy_collection,
     move_collection,
 )
-from app.acquisition.flows.fiftyone import populate_fiftyone_dataset
+from app.acquisition.flows.fiftyone import ingest_acquisition_data
 from app.acquisition.models import (
     ArtifactCollection,
     ArtifactCollectionCreate,
@@ -66,7 +66,7 @@ def on_plateread_completed(plateread_id: int):
         compress_cq1_acquisition(acquisition_collection)
 
         if settings.CREATE_FIFTYONE_DATASETS:
-            populate_fiftyone_dataset(acquisition.name, acquisition_collection.path)
+            ingest_acquisition_data(acquisition.name, acquisition_collection.path)
 
         copy_collection(
             collection=acquisition_collection,

@@ -29,7 +29,8 @@ def _get_or_create_dataset(name: str) -> fo.Dataset:
 
 
 @task
-def _ingest_experiment_df(dataset: fo.Dataset, df: pd.DataFrame):
+def _populate_dataset(dataset: fo.Dataset, df: pd.DataFrame):
+    """Idempotently populate a FiftyOne dataset with samples derived from a provided acquisition dataframe."""
     axes = df.index.names
     media_dir = Path(dataset.info["media_dir"])  # type: ignore
 
@@ -108,8 +109,8 @@ def _ingest_experiment_df(dataset: fo.Dataset, df: pd.DataFrame):
 
 
 @flow
-def populate_fiftyone_dataset(acquisition_name: str, acquisition_path: Path):
+def ingest_acquisition_data(acquisition_name: str, acq_data_path: Path):
     dataset = _get_or_create_dataset(acquisition_name)
-    df = get_experiment_df(acquisition_path, ordinal_time=True).reset_index()
+    df = get_experiment_df(acq_data_path, ordinal_time=True).reset_index()
     df = df.set_index(["region", "field", "time", "channel", "z"])
-    _ingest_experiment_df(dataset, df)
+    _populate_dataset(dataset, df)
