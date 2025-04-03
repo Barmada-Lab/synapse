@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import tifffile
 from prefect import flow, task
@@ -12,7 +13,6 @@ from app.acquisition.flows.artifact_collections import (
 )
 from app.acquisition.flows.fiftyone import ingest_acquisition_data
 from app.acquisition.models import (
-    ArtifactCollection,
     ArtifactCollectionCreate,
     ArtifactType,
     PlatereadSpec,
@@ -25,15 +25,24 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def compress_cq1_acquisition(acquisition_collection: ArtifactCollection):
+def compress_cq1_acquisition(acquisition_data_path: Path):
+    """
+    Compress all uncompressed .tif files in the provided acquisition_data directory
+
+    (assumes standard CQ1 directory structure)
+
+    Args:
+        acquisition_data_path - path to the acquisition's acquisition_data directory
+    """
     pattern = "*/Projection/*[!.tmp].tif"
-    for file in acquisition_collection.path.glob(pattern):
+    for file in acquisition_data_path.glob(pattern):
         with TiffFile(file) as tif:
             is_compressed = tif.pages[0].compression != COMPRESSION.NONE
             if is_compressed:
                 continue
             data = tif.asarray()
 
+        # write to a temporary file to allow for atomic replacement
         tmp_file = file.with_suffix(".tmp.tif")
         tifffile.imwrite(tmp_file, data, compression=COMPRESSION.ZSTD)
         tmp_file.replace(file)
@@ -63,7 +72,7 @@ def on_plateread_completed(plateread_id: int):
                 ),
             )
 
-        compress_cq1_acquisition(acquisition_collection)
+        compress_cq1_acquisition(acquisition_collection.path)
 
         if settings.CREATE_FIFTYONE_DATASETS:
             ingest_acquisition_data(acquisition.name, acquisition_collection.path)
