@@ -2,12 +2,17 @@ import logging
 from pathlib import Path
 
 import fiftyone as fo  # type: ignore
+import numpy as np
 import pandas as pd
 import tifffile
+import xarray as xr
 from acquisition_io.loaders.cq1_loader import get_experiment_df
+from acquisition_io.utils import iter_idx_prod
+from pandas import Timestamp
 from PIL import Image
 from prefect import flow, task
 from skimage import exposure
+from skimage.measure import regionprops
 
 from app.core.config import settings
 
@@ -23,7 +28,7 @@ def _get_or_create_dataset(name: str) -> fo.Dataset:
         return fo.load_dataset(name)
     else:
         dataset = fo.Dataset(name=name)
-        dataset.info["media_dir"] = str(media_dir)  # type: ignore
+        dataset.info["media_dir"] = str(media_dir)
         dataset.persistent = True
         return dataset
 
@@ -109,8 +114,52 @@ def _populate_dataset(dataset: fo.Dataset, df: pd.DataFrame):
 
 
 @flow
-def ingest_acquisition_data(acquisition_name: str, acq_data_path: Path):
+def ingest_acquisition_data(acquisition_name: str, acquisition_data_path: Path):
+    """Ingest CQ1 acquisition data into a FiftyOne dataset.
+
+    Args:
+        acquisition_name - name of the dataset to populate
+        acquisition_data_path - path to the acquisition's acquisition_data directory
+    """
     dataset = _get_or_create_dataset(acquisition_name)
-    df = get_experiment_df(acq_data_path, ordinal_time=True).reset_index()
+    df = get_experiment_df(acquisition_data_path, ordinal_time=True).reset_index()
     df = df.set_index(["region", "field", "time", "channel", "z"])
     _populate_dataset(dataset, df)
+
+
+def _add_detection_results(
+    sample: fo.Sample, labels: np.ndarray, preds: np.ndarray, live_label: int
+):
+    detections = []
+    for props in regionprops(labels):
+        mask = labels == props.label
+        prediction = np.bincount(preds[mask]).argmax()
+        pred_label = "live" if prediction == live_label else "dead"
+        detection = fo.Detection.from_mask(mask, label=pred_label)
+        detections.append(detection)
+    sample["predictions"] = fo.Detections(detections=detections)
+    return sample
+
+
+def import_survival(dataset: fo.Dataset, survival_results: xr.Dataset):
+    for frame in iter_idx_prod(survival_results, subarr_dims=["y", "x"]):
+        selector: dict = {coord: frame[coord].values.tolist() for coord in frame.coords}
+        selector["time"] = Timestamp(selector["time"], unit="ns")
+        preds = frame["preds"].values
+        live_label = frame.attrs["live_label"]
+        labels = frame["nuc_labels"].values
+        for match in dataset.match(selector):
+            _add_detection_results(match, labels, preds, live_label).save()
+
+
+@flow
+def ingest_survival_results(acquisition_name: str, survival_results_path: Path):
+    """Ingest Cytomancer survival results into a FiftyOne dataset.
+
+    Args:
+        acquisition_name - The name of the acquisition to ingest the survival results into.
+        survival_results_path - path to the survival results zarr file
+    """
+    dataset = fo.load_dataset(acquisition_name)
+    ds = xr.open_zarr(survival_results_path)
+    import_survival(dataset, ds)
