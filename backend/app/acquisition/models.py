@@ -261,11 +261,21 @@ class ArtifactCollection(ArtifactCollectionBase, table=True):
     @computed_field  # type: ignore
     @property
     def acquisition_dir(self) -> Path:
+        """
+        Path to the parent acquisition directory containing this artifact collection.
+
+        e.g. /analysis_repository/acquisition_name
+        """
         return get_acquisition_path(self.location, self.acquisition.name)
 
     @computed_field  # type: ignore
     @property
     def path(self) -> Path:
+        """
+        Repository-local path to the artifact collection.
+
+        e.g. /analysis_repository/acquisition_name/acquisition_data
+        """
         return get_artifact_collection_path(
             self.location, self.acquisition.name, self.artifact_type
         )
