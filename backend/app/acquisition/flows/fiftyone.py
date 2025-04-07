@@ -146,7 +146,7 @@ def import_survival(dataset: fo.Dataset, survival_results: xr.Dataset):
         selector: dict = {coord: frame[coord].values.tolist() for coord in frame.coords}
         selector["time"] = Timestamp(selector["time"], unit="ns")
         preds = frame["preds"].values
-        live_label = frame.attrs["live_label"]
+        live_label = frame["preds"].attrs["live_label"]
         labels = frame["nuc_labels"].values
         for match in dataset.match(selector):
             _add_detection_results(match, labels, preds, live_label).save()
