@@ -248,6 +248,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - fiftyone-db-data:/data/db
 
   fiftyone:
     command: ["python", "-m", "fiftyone.server.main", "--port", "5151"]
@@ -279,6 +281,7 @@ volumes:
     external: true
   app-overlord-data:
     external: true
+  fiftyone-db-data:
   fiftyone-data:
     external: true
 

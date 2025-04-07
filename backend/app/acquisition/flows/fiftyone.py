@@ -8,7 +8,6 @@ import tifffile
 import xarray as xr
 from acquisition_io.loaders.cq1_loader import get_experiment_df
 from acquisition_io.utils import iter_idx_prod
-from pandas import Timestamp
 from PIL import Image
 from prefect import flow, task
 from skimage import exposure
@@ -144,12 +143,54 @@ def _add_detection_results(
 def import_survival(dataset: fo.Dataset, survival_results: xr.Dataset):
     for frame in iter_idx_prod(survival_results, subarr_dims=["y", "x"]):
         selector: dict = {coord: frame[coord].values.tolist() for coord in frame.coords}
-        selector["time"] = Timestamp(selector["time"], unit="ns")
+        # convert time to 0-indexed ints
+        selector["time"] = int(
+            np.where(frame["time"].values == survival_results["time"].values)[0][0]
+        )
         preds = frame["preds"].values
         live_label = frame["preds"].attrs["live_label"]
         labels = frame["nuc_labels"].values
         for match in dataset.match(selector):
             _add_detection_results(match, labels, preds, live_label).save()
+
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        color_pool=[
+            "#7bc043",  # green
+            "#ee4035",  # red
+            "#f37736",  # orange
+            "#0392cf",  # blue
+        ],
+        color_by="value",
+        fields=[
+            {
+                "path": "ground_truth",
+                "colorByAttribute": "label",
+                "valueColors": [
+                    {"value": "dead", "color": "#ee4035"},
+                    {"value": "live", "color": "#7bc043"},
+                ],
+            },
+            {
+                "path": "predictions",
+                "colorByAttribute": "label",
+                "valueColors": [
+                    {"value": "dead", "color": "#ee4035"},
+                    {"value": "live", "color": "#7bc043"},
+                ],
+            },
+            {
+                "path": "predictions",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fp", "color": "#0392cf"},
+                    {"value": "fn", "color": "#f37736"},
+                    {"value": "tp", "color": "#7bc043"},
+                    {"value": "tn", "color": "#ee4035"},
+                ],
+            },
+        ],
+    )
+    dataset.save()
 
 
 @flow
