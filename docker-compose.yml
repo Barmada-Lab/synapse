@@ -130,6 +130,7 @@ services:
       - PREFECT_API_URL=${PREFECT_API_URL}
       - CYTOMANCER_FO_CACHE=/fiftyone
       - CYTOMANCER_DASK_N_WORKERS=1
+      - FIFTYONE_DATABASE_URI=mongodb://fiftyone-db:27017/fiftyone
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
