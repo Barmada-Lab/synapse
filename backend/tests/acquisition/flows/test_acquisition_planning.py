@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from app.acquisition import crud
 from app.acquisition.flows.acquisition_planning import (
-    check_to_schedule_plans,
+    check_to_schedule_acquisition_plan,
     implement_plan,
     schedule_unscheduled_reads,
 )
@@ -131,7 +131,7 @@ def test_check_to_implement_plans(db: Session) -> None:
     with patch(
         "app.acquisition.flows.acquisition_planning.submit_plateread_spec"
     ) as mock_submit_plateread_spec:
-        check_to_schedule_plans(wellplate_id=wellplate.id)  # type: ignore[arg-type]
+        check_to_schedule_acquisition_plan(wellplate_id=wellplate.id)  # type: ignore[arg-type]
         assert mock_submit_plateread_spec.call_count == 2
 
     db.refresh(acquisition_plan)
@@ -151,14 +151,14 @@ def test_check_to_implement_plans_already_implemented(db: Session) -> None:
         session=db, db_wellplate=wellplate, wellplate_in=wellplate_in
     )
 
-    check_to_schedule_plans(wellplate_id=wellplate.id)  # type: ignore[arg-type]
+    check_to_schedule_acquisition_plan(wellplate_id=wellplate.id)  # type: ignore[arg-type]
     db.refresh(acquisition_plan)
     assert acquisition_plan.reads != []
 
     with patch(
         "app.acquisition.flows.acquisition_planning.submit_plateread_spec"
     ) as mock_submit_plateread_spec:
-        check_to_schedule_plans(wellplate_id=wellplate.id)  # type: ignore[arg-type]
+        check_to_schedule_acquisition_plan(wellplate_id=wellplate.id)  # type: ignore[arg-type]
         # won't resubmit scheduled reads
         mock_submit_plateread_spec.assert_not_called()
 
@@ -179,7 +179,7 @@ def test_check_to_implement_plans_different_storage_location(db: Session) -> Non
     with patch(
         "app.acquisition.flows.acquisition_planning.submit_plateread_spec"
     ) as mock_submit_plateread_spec:
-        check_to_schedule_plans(wellplate_id=wellplate.id)  # type: ignore[arg-type]
+        check_to_schedule_acquisition_plan(wellplate_id=wellplate.id)  # type: ignore[arg-type]
         mock_submit_plateread_spec.assert_not_called()
 
     db.refresh(acquisition_plan)
@@ -190,4 +190,4 @@ def test_check_to_implement_plans_different_storage_location(db: Session) -> Non
 
 def test_check_to_schedule_acquisition_no_wellplate() -> None:
     with pytest.raises(ValueError):
-        check_to_schedule_plans(wellplate_id=2**16)
+        check_to_schedule_acquisition_plan(wellplate_id=2**16)

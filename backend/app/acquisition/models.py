@@ -112,8 +112,12 @@ class InstrumentBase(SQLModel):
 class Instrument(InstrumentBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    instrument_type_id: int = Field(foreign_key="instrumenttype.id", ondelete="CASCADE")
-    instrument_type: InstrumentType = Relationship(back_populates="instruments")
+    instrument_type_id: int = Field(
+        foreign_key="instrumenttype.id", ondelete="RESTRICT"
+    )
+    instrument_type: InstrumentType = Relationship(
+        back_populates="instruments", cascade_delete=False
+    )
 
     acquisitions: list["Acquisition"] = Relationship(back_populates="instrument")
 
@@ -154,8 +158,10 @@ class Acquisition(AcquisitionBase, table=True):
         back_populates="acquisition", cascade_delete=True
     )
 
-    instrument_id: int = Field(foreign_key="instrument.id", ondelete="CASCADE")
-    instrument: Instrument = Relationship(back_populates="acquisitions")
+    instrument_id: int = Field(foreign_key="instrument.id", ondelete="RESTRICT")
+    instrument: Instrument = Relationship(
+        back_populates="acquisitions", cascade_delete=False
+    )
 
     acquisition_plan: Optional["AcquisitionPlan"] = Relationship(
         back_populates="acquisition", cascade_delete=True

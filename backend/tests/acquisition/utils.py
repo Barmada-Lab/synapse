@@ -162,8 +162,12 @@ def move_plate_to_acquisition_plan_location(
     return wellplate
 
 
-def complete_reads(acquisition_plan: AcquisitionPlan, session: Session):
-    for read in acquisition_plan.reads:
+def complete_reads(
+    acquisition_plan: AcquisitionPlan, session: Session, n_reads: int | None = None
+):
+    if n_reads is None:
+        n_reads = len(acquisition_plan.reads)
+    for read in acquisition_plan.reads[:n_reads]:
         read.status = ProcessStatus.COMPLETED
         session.add(read)
     session.commit()

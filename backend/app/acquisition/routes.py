@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import func, select
 
 from app.common.slack import notify_slack
@@ -317,9 +318,15 @@ def delete_instrument(session: SessionDep, id: int) -> Response:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Instrument not found"
         )
-    session.delete(instrument)
-    session.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    try:
+        session.delete(instrument)
+        session.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Instrument is associated with an acquisition",
+        ) from e
 
 
 @api_router.post("/alerts")

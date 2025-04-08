@@ -51,7 +51,7 @@ def schedule_unscheduled_reads(session: Session, plan: AcquisitionPlan):
 
 
 @flow
-def check_to_schedule_plans(wellplate_id: int):
+def check_to_schedule_acquisition_plan(wellplate_id: int):
     logger = get_run_logger()
     with get_db() as session:
         logger.info(f"Checking to schedule plans for wellplate {wellplate_id}")

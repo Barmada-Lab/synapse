@@ -38,7 +38,7 @@ class BatchParams(BaseModel):
 
 
 @task(cache_policy=NONE)
-def submit_plateread_spec(*, session: Session, spec: PlatereadSpec):
+def submit_plateread_spec(*, session: Session, spec: PlatereadSpec) -> Path:
     sorted_tps = sorted(spec.acquisition_plan.reads, key=lambda x: x.start_after)
     read_idx = sorted_tps.index(spec) + 1
 

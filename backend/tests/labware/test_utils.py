@@ -15,7 +15,9 @@ def test_handle_wellplate_location_update(db: Session) -> None:
     wellplate_in = WellplateUpdate(location=Location.CYTOMAT2)
     update_wellplate(session=db, db_wellplate=wellplate, wellplate_in=wellplate_in)
 
-    with patch("app.labware.events.check_to_schedule_plans") as mock_emit_event:
+    with patch(
+        "app.labware.events.check_to_schedule_acquisition_plan"
+    ) as mock_emit_event:
         handle_wellplate_location_update(
             wellplate_id=wellplate.id, origin=before, dest=Location.CYTOMAT2
         )
@@ -26,7 +28,9 @@ def test_handle_wellplate_location_update_no_difference(db: Session) -> None:
     wellplate = create_random_wellplate(session=db)
     assert wellplate.location == Location.EXTERNAL
 
-    with patch("app.labware.events.check_to_schedule_plans") as mock_emit_event:
+    with patch(
+        "app.labware.events.check_to_schedule_acquisition_plan"
+    ) as mock_emit_event:
         handle_wellplate_location_update(
             wellplate_id=wellplate.id, origin=Location.EXTERNAL, dest=Location.EXTERNAL
         )

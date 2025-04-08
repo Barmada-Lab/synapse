@@ -5,7 +5,7 @@ from collections.abc import Generator
 import filelock
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, delete
+from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.db import engine, init_db
@@ -19,12 +19,6 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
-        meta = SQLModel.metadata
-        for table in reversed(meta.sorted_tables):
-            statement = delete(table)
-            session.execute(statement)
-        init_db(session)
-        session.commit()
 
 
 @pytest.fixture(scope="session")

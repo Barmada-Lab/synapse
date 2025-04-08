@@ -109,29 +109,15 @@ def test_list_instruments(pw_authenticated_client: TestClient, db: Session) -> N
     )
 
 
-def test_delete_instrument(pw_authenticated_client: TestClient, db: Session) -> None:
-    # FLAKY
-    instrument_type = create_random_instrument_type(session=db)
-    instrument_create = InstrumentCreate(
-        name=random_lower_string(), instrument_type_id=instrument_type.id
-    )
-    pw_authenticated_client.post(
-        f"{settings.API_V1_STR}/instruments",
-        json=instrument_create.model_dump(mode="json"),
-    )
-    instrument = InstrumentRecord.model_validate(
-        pw_authenticated_client.get(f"{settings.API_V1_STR}/instruments").json()[
-            "data"
-        ][0]
-    )
+def test_delete_instrument_restricted(
+    pw_authenticated_client: TestClient, db: Session
+) -> None:
+    acquisition = create_random_acquisition(session=db)
     response = pw_authenticated_client.delete(
-        f"{settings.API_V1_STR}/instruments/{instrument.id}"
+        f"{settings.API_V1_STR}/instruments/{acquisition.instrument.id}"
     )
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-    response = pw_authenticated_client.get(f"{settings.API_V1_STR}/instruments")
-    assert response.status_code == status.HTTP_200_OK
-    assert InstrumentList.model_validate(response.json())
-    assert instrument.id not in [item["id"] for item in response.json()["data"]]
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json()["detail"] == "Instrument is associated with an acquisition"
 
 
 def test_get_acquisitions(pw_authenticated_client: TestClient, db: Session) -> None:
