@@ -7,10 +7,13 @@ from prefect.cache_policies import NONE
 from sqlmodel import Session, or_, select
 
 from app.acquisition import crud
+from app.acquisition.flows import fiftyone
 from app.acquisition.models import (
     Acquisition,
     AnalysisTrigger,
+    ArtifactType,
     ProcessStatus,
+    Repository,
     SBatchAnalysisSpec,
     SBatchJob,
     SBatchJobCreate,
@@ -179,8 +182,26 @@ def handle_analyses(acquisition: Acquisition, session: Session):
             handle_end_of_run_analyses(acquisition, session)
 
 
+@task(cache_policy=NONE)  # type: ignore[arg-type]
+def on_job_complete(job: SBatchJob, session: Session):
+    acquisition = job.analysis_spec.analysis_plan.acquisition
+    artifact_collection = crud.get_artifact_collection_by_key(
+        session=session,
+        acquisition_id=acquisition.id,  # type: ignore[arg-type]
+        key=(Repository.ANALYSIS_STORE, ArtifactType.ACQUISITION_DATA),
+    )
+    if artifact_collection is None:
+        return
+    survival_results = (
+        artifact_collection.acquisition_dir / "scratch" / "survival_processed.zarr"
+    )
+    if survival_results.exists():
+        fiftyone.ingest_survival_results(acquisition.name, survival_results)
+
+
 @flow
 def sync_analysis_jobs():
+    logger = get_run_logger()
     with (
         get_db() as session,
         Executor(endpoint_id=settings.GLOBUS_ENDPOINT_ID) as executor,
@@ -198,6 +219,17 @@ def sync_analysis_jobs():
 
         for job in active_jobs:
             status = get_job_status(job.slurm_id, executor)
+            if status == SlurmJobState.COMPLETED:
+                try:
+                    logger.info(
+                        f"Analysis {job.id} [acquisition {job.analysis_spec.name}] completed"
+                    )
+                    logger.info("Running post-analysis handler")
+                    on_job_complete(job, session)
+                except Exception as e:
+                    logger.error(
+                        f"Encountered an error while running post-analysis handler for analysis {job.id}: {e}"
+                    )
             crud.update_sbatch_job(
                 session=session, db_job=job, update=SBatchJobUpdate(status=status)
             )

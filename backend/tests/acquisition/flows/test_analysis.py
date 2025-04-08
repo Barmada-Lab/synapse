@@ -1,6 +1,7 @@
 import random
 from unittest.mock import patch
 
+from globus_compute_sdk import ShellResult
 from sqlmodel import Session
 
 from app.acquisition import crud
@@ -28,6 +29,27 @@ from tests.acquisition.utils import (
     create_random_artifact_collection,
     move_plate_to_acquisition_plan_location,
 )
+
+
+def _mock_batch_job_submission(mock_executor_constructor):
+    """Helper function to mock a batch job submission response.
+    Args:
+        mock_executor: The mocked executor object from unittest.mock.patch
+    Returns:
+        int: The randomly generated job ID that was used in the mock
+    """
+    job_id = random.randint(1, 1000000)
+    mock_executor_constructor.return_value.__enter__.return_value.submit.return_value.result.return_value = ShellResult(
+        cmd="", stderr="", returncode=0, stdout=f"Submitted batch job {job_id}"
+    )
+
+
+def _assert_batch_job_submission(mock_executor_constructor):
+    mock_executor_constructor.return_value.__enter__.return_value.submit.assert_called_once()
+
+
+def _assert_batch_job_submission_not_called(mock_executor_constructor):
+    mock_executor_constructor.return_value.__enter__.return_value.submit.assert_not_called()
 
 
 def test_handle_analyses_when_no_acquisition_plan(db: Session):
@@ -149,9 +171,10 @@ def test_handle_post_read_analyses(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
         handle_post_read_analyses(1, acquisition, db)
-        mock_submit.assert_called_once()
+        _assert_batch_job_submission(mock_executor)
 
 
 def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
@@ -178,9 +201,10 @@ def test_handle_post_read_analyses_no_matching_trigger_value(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
         handle_post_read_analyses(1, acquisition, db)
-        mock_submit.assert_not_called()
+        _assert_batch_job_submission_not_called(mock_executor)
 
 
 def test_handle_end_of_run_analyses(db: Session):
@@ -206,9 +230,10 @@ def test_handle_end_of_run_analyses(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
         handle_end_of_run_analyses(acquisition, db)
-        mock_submit.assert_called_once()
+        _assert_batch_job_submission(mock_executor)
 
 
 def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
@@ -235,9 +260,10 @@ def test_handle_end_of_run_analyses_no_matching_trigger(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
         handle_end_of_run_analyses(acquisition, db)
-        mock_submit.assert_not_called()
+        _assert_batch_job_submission_not_called(mock_executor)
 
 
 def test_immediate_analyses(db: Session):
@@ -263,9 +289,10 @@ def test_immediate_analyses(db: Session):
         location=Repository.ANALYSIS_STORE,
         acquisition=acquisition,
     )
-    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
         handle_immediate_analyses(acquisition, db)
-        mock_submit.assert_called_once()
+        _assert_batch_job_submission(mock_executor)
 
 
 def test_immediate_analyses_already_submitted(db: Session):
@@ -298,9 +325,10 @@ def test_immediate_analyses_already_submitted(db: Session):
             analysis_spec_id=analysis.id,
         ),
     )
-    with patch("app.acquisition.flows.analysis.submit_sbatch_analysis") as mock_submit:
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
         handle_immediate_analyses(acquisition, db)
-        mock_submit.assert_not_called()
+        _assert_batch_job_submission_not_called(mock_executor)
 
 
 def test_handle_immediate_analyses_no_matching_trigger(db: Session):
@@ -330,3 +358,31 @@ def test_handle_immediate_analyses_no_matching_trigger(db: Session):
     handle_immediate_analyses(acquisition, db)
     db.refresh(analysis)
     assert not any(analysis.jobs)
+
+
+def _stup_analysis_spec(db: Session):
+    """Submits analyses"""
+    acquisition = create_random_acquisition(session=db)
+    acquisition_plan = create_random_acquisition_plan(
+        session=db, acquisition=acquisition, n_reads=1
+    )
+    analysis_spec = create_random_analysis_spec(
+        session=db,
+        acquisition=acquisition,
+        analysis_trigger=AnalysisTrigger.IMMEDIATE,
+    )
+    move_plate_to_acquisition_plan_location(
+        acquisition_plan.wellplate, acquisition_plan, db
+    )
+    check_to_schedule_acquisition_plan(wellplate_id=acquisition_plan.wellplate_id)
+    complete_reads(acquisition_plan, db)
+    create_random_artifact_collection(
+        session=db,
+        artifact_type=ArtifactType.ACQUISITION_DATA,
+        location=Repository.ANALYSIS_STORE,
+        acquisition=acquisition,
+    )
+    with patch("app.acquisition.flows.analysis.Executor") as mock_executor:
+        _mock_batch_job_submission(mock_executor)
+        handle_immediate_analyses(acquisition, db)
+    return analysis_spec
