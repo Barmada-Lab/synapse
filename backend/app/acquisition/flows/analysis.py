@@ -192,11 +192,16 @@ def on_job_complete(job: SBatchJob, session: Session):
     )
     if artifact_collection is None:
         return
+
     survival_results = (
         artifact_collection.acquisition_dir / "scratch" / "survival_processed.zarr"
     )
     if survival_results.exists():
         fiftyone.ingest_survival_results(acquisition.name, survival_results)
+
+    map_file = artifact_collection.acquisition_dir / "analysis" / "map.csv"
+    if map_file.exists():
+        fiftyone.ingest_map_file(acquisition.name, map_file)
 
 
 @flow

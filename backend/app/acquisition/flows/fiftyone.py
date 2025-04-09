@@ -204,3 +204,37 @@ def ingest_survival_results(acquisition_name: str, survival_results_path: Path):
     dataset = fo.load_dataset(acquisition_name)
     ds = xr.open_zarr(survival_results_path)
     import_survival(dataset, ds)
+
+
+@task
+def tag_dataset(dataset: fo.Dataset, map_df: pd.DataFrame):
+    for idx, row in map_df.iterrows():
+        for _match in dataset.match(fo.F("region") == idx):
+            cleaned = row.dropna()
+            if "cells" in cleaned:
+                _match["cell_line"] = cleaned["cells"]
+            treatments = []
+            if "Treatment1" in cleaned:
+                treatments.append(cleaned["Treatment1"])
+            if "Treatment2" in cleaned:
+                treatments.append(cleaned["Treatment2"])
+            if "Treatment3" in cleaned:
+                treatments.append(cleaned["Treatment3"])
+            if "Treatment4" in cleaned:
+                treatments.append(cleaned["Treatment4"])
+            if any(treatments):
+                _match["treatments"] = treatments
+            _match.save()
+
+
+@flow
+def ingest_map_file(acquisition_name: str, map_path: Path):
+    """Ingest a map file into a populated FiftyOne dataset.
+
+    Args:
+        acquisition_name - The name of the acquisition to ingest the map into.
+        map_path - path to the map csv file
+    """
+    dataset = fo.load_dataset(acquisition_name)
+    map_df = pd.read_csv(map_path, index_col="well")
+    tag_dataset(dataset, map_df)
