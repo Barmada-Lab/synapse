@@ -8,6 +8,7 @@ import tifffile
 import xarray as xr
 from acquisition_io.loaders.cq1_loader import get_experiment_df
 from acquisition_io.utils import iter_idx_prod
+from fiftyone import ViewField as F
 from PIL import Image
 from prefect import flow, task
 from skimage import exposure
@@ -211,7 +212,7 @@ def ingest_survival_results(acquisition_name: str, survival_results_path: Path):
 @task
 def _tag_dataset(dataset: fo.Dataset, map_df: pd.DataFrame):
     for idx, row in map_df.iterrows():
-        for _match in dataset.match(fo.F("region") == idx):
+        for _match in dataset.match(F("region") == idx):
             cleaned = row.dropna()
             if "cells" in cleaned:
                 _match["cell_line"] = cleaned["cells"]
