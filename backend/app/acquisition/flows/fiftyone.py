@@ -40,6 +40,7 @@ def _populate_dataset(dataset: fo.Dataset, df: pd.DataFrame):
 
     def prepare_sample(coords, row):
         raw_path = row["path"]
+        rel_path = row["relpath"]
         fields_dict = dict(zip(axes, coords, strict=False))
 
         region = fields_dict["region"]
@@ -84,15 +85,15 @@ def _populate_dataset(dataset: fo.Dataset, df: pd.DataFrame):
         image = Image.fromarray(rescaled)
         image.save(png_path, format="PNG")
 
-        return (raw_path, png_path, fields_dict)
+        return (rel_path, png_path, fields_dict)
 
     for index, row in df.iterrows():
         result = prepare_sample(index, row)
         if result is None:
             continue
-        raw_path, png_path, fields_dict = result
+        rel_path, png_path, fields_dict = result
         sample = fo.Sample(filepath=png_path)
-        sample["raw_path"] = str(raw_path)  # attach the rawpath for quantitative stuff
+        sample["raw_path"] = rel_path
         for key, value in fields_dict.items():
             sample[key] = value
         dataset.add_sample(sample)
@@ -123,7 +124,8 @@ def ingest_acquisition_data(acquisition_name: str, acquisition_data_path: Path):
     dataset = _get_or_create_dataset(acquisition_name)
     df = get_experiment_df(acquisition_data_path, ordinal_time=True).reset_index()
     df = df.set_index(["region", "field", "time", "channel", "z"])
-    _populate_dataset(dataset, df)
+    df["relpath"] = df["path"].apply(lambda p: p.relative_to(acquisition_data_path))
+    _populate_dataset(dataset, df, acquisition_data_path)
 
 
 def _add_detection_results(
@@ -140,7 +142,7 @@ def _add_detection_results(
     return sample
 
 
-def import_survival(dataset: fo.Dataset, survival_results: xr.Dataset):
+def _import_survival(dataset: fo.Dataset, survival_results: xr.Dataset):
     for frame in iter_idx_prod(survival_results, subarr_dims=["y", "x"]):
         selector: dict = {coord: frame[coord].values.tolist() for coord in frame.coords}
         # convert time to 0-indexed ints
@@ -203,11 +205,11 @@ def ingest_survival_results(acquisition_name: str, survival_results_path: Path):
     """
     dataset = fo.load_dataset(acquisition_name)
     ds = xr.open_zarr(survival_results_path)
-    import_survival(dataset, ds)
+    _import_survival(dataset, ds)
 
 
 @task
-def tag_dataset(dataset: fo.Dataset, map_df: pd.DataFrame):
+def _tag_dataset(dataset: fo.Dataset, map_df: pd.DataFrame):
     for idx, row in map_df.iterrows():
         for _match in dataset.match(fo.F("region") == idx):
             cleaned = row.dropna()
@@ -237,4 +239,4 @@ def ingest_map_file(acquisition_name: str, map_path: Path):
     """
     dataset = fo.load_dataset(acquisition_name)
     map_df = pd.read_csv(map_path, index_col="well")
-    tag_dataset(dataset, map_df)
+    _tag_dataset(dataset, map_df)
