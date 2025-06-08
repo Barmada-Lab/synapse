@@ -36,6 +36,7 @@ dependencies = [
     "imagecodecs>=2025.3.30",
     "zarr>=3.0.6",
     "xarray>=2025.3.1",
+    "pywavelets>=1.8.0",
 ]
 
 [project.scripts]
@@ -53,6 +54,8 @@ dev-dependencies = [
     "ipython>=8.29.0",
     "pytest-asyncio>=0.23.8",
     "pandas-stubs>=2.2.3.241126",
+    "napari>=0.5.6",
+    "pyqt5>=5.15.11",
 ]
 
 [tool.uv.sources]
